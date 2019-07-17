@@ -1,0 +1,46 @@
+INIT:
+
+--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: 2019.07.17\n--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n
+
+BUZZER INIT:
+
+Initializing buzzer...\n
+
+RGB INIT:
+
+Initializing RGB LED...\n
+
+TEST:
+
+INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n
+
+ERROR DURING TESTING:
+
+--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n
+
+WAIT:
+
+TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\nARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n
+
+WARN:
+
+LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n
+
+LAUNCH1:
+
+--------------------------------------------\nLIFTOFF_\nIGNITION AT: 
+
+LANUCH2:
+
+ microseconds_\n--------------------------------------------\n
+
+DATAHEADER1:
+
+[+
+
+DATAHEADER2:
+
+ us/
+
+DATAHEADER3:
+]:\t

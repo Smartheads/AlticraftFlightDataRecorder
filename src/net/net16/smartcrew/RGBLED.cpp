@@ -28,7 +28,108 @@
 
 #include "RGBLED.h"
 
-rgbled::rgbled(byte redPin, byte greenPin, byte bluePin);
+/**
+*	Constructor for the class RGB LED.
+*
+*	@param redpin
+*	@param greenpin
+*	@param bluepin
+*/
+rgbled::rgbled(uint8_t redpin, uint8_t greenpin, uint8_t bluepin)
 {
+	*this->redpin = redpin;
+	*this->greenpin = greenpin;
+	*this->bluepin = bluepin;
 	
+	pinMode(redpin, OUTPUT);
+	pinMode(greenpin, OUTPUT);
+	pinMode(bluepin, OUTPUT);
+	
+	setColor(WHITE);
+	setState(OFF);
+}
+
+/**
+*	Destructor for the class RGB LED.
+*
+*/
+rgbled::~rgbled()
+{
+	delete ledcol;
+	delete redpin;
+	delete greenpin;
+	delete bluepin;
+}
+
+/**
+*	Set the color of the RGB LED.
+*
+*	@param red
+*	@param green
+*	@param blue
+*
+*/
+void rgbled::setColor(byte red, byte green, byte blue)
+{
+	setColor(color {red, green, blue});
+}
+
+/**
+*	Sets the color of the RGB LED.
+*
+*	@param ledcol
+*/
+void rgbled::setColor(color ledcol)
+{
+	(*this->ledcol).red = ledcol.red;
+	(*this->ledcol).green = ledcol.green;
+	(*this->ledcol).blue = ledcol.blue;
+	
+	analogWrite(*redpin, ledcol.red);
+	analogWrite(*greenpin, ledcol.green);
+	analogWrite(*bluepin, ledcol.blue);
+}
+
+/**
+*	Turns the LED off.
+*
+*/
+void rgbled::turnOff(void)
+{
+	*ledstate = OFF;
+	digitalWrite(*redpin, LOW);
+	digitalWrite(*greenpin, LOW);
+	digitalWrite(*bluepin, LOW);
+}
+
+/**
+*	Turns the led on.
+*
+*/
+void rgbled::turnOn(void)
+{
+	*ledstate = ON;
+	setColor(*ledcol);
+}
+
+/**
+*	Returns the state of the led. True = ON, false = OFF.
+*
+*/
+bool rgbled::getState(void)
+{
+	return *ledstate;
+}
+
+/**
+*	Sets the state of the led. True = ON, false = OFF.
+*
+*/
+void rgbled::setState(bool state)
+{
+	*ledstate = state;
+	if (state)
+		turnOn();
+	else
+		turnOff();
 }

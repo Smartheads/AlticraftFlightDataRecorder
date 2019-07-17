@@ -26,27 +26,49 @@
 *
 */
 
-#include <Arduino.h>
+#ifndef RGBLED_H
+#define RGBLED_H
+
+#include "Arduino.h"
+
+#define RED color {255, 0, 255}
+#define GREEN color {0, 255, 0}
+#define BLUE color {0, 0, 255}
+#define WHITE color {255, 255, 255}
+
+#define ON true
+#define OFF false
 
 typedef unsigned char byte;
 
 typedef struct
 {
-	byte red,
-	byte green,
-	byte blue
+	byte red;
+	byte green;
+	byte blue;
 } color;
 
-class rgbled : public
+class rgbled
 {
 	public:
-		rgbled(byte redPin, byte greedPin, byte bluePin);
+		rgbled(uint8_t redpin, uint8_t greedpin, uint8_t bluepin);
 		~rgbled();
 		
 		void setColor(byte red, byte green, byte blue);
-		Color getColor(void);
+		void setColor(color ledcol);
+		color getColor(void);
+		
+		void turnOff(void);
+		void turnOn(void);
+		void setState(bool state);
+		bool getState(void);
 		
 	private:
-		color 
-		
+		color* const ledcol = new color;
+		uint8_t* const redpin = new uint8_t;
+		uint8_t* const greenpin = new uint8_t;
+		uint8_t* const bluepin = new uint8_t;
+		bool* const ledstate = new bool;
 };
+
+#endif
