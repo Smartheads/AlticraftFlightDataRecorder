@@ -35,9 +35,11 @@
 
 xSerial Serial; //TEMPORARY
 
-// Program parameters:
+
+/* BEGINNING OF PROGRAM PREFERANCES */
+
 #define BAUD_RATE 115200							// Change baud rate here
-#define LAUNCH_LOG_STAGE ACTIVE						// Change operation mode here
+#define ONLY_LAUNCH_AND_LOG ACTIVE						// Change operation mode here
 
 /*	OPERATION MODES: (use double quotes)
 *			- "PASSIVE_LOG": Only log flight data. Disables launch and staging features.
@@ -55,7 +57,12 @@ xSerial Serial; //TEMPORARY
 *			- "PRESSURE": Activate staging at a specific pressure. (kPa)
 */
 
-// Preprocessing settings
+/* END OF PREFERENCES*/
+
+/* 
+* Preprocessing settings
+*
+*/
 #if defined PASSIVE_LOG
 	#define OPERATION_MODE "PASSIVE_LOG"
 #endif
@@ -96,10 +103,12 @@ const struct
 	std::string rgb_init = "Initializing RGB LED...\n";
 	std::string test = "INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n";
 	std::string test_err = "--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n";
-	std::string wait = "TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\nARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n";
+	std::string testok = "TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n";
+	std::string wait = "ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n";
 	std::string warn = "LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n";
 	std::string launch1 = "--------------------------------------------\nLIFTOFF_\nIGNITION AT: ";
-	std::string launch2 = " microseconds_\n--------------------------------------------\n";
+	std::string launch2 = " microseconds_\n";
+	std::string startdatalog = "--------------------------------------------\n";
 	std::string dataheader1 = "[+";
 	std::string dataheader2 = "us/";
 	std::string dataheader3 = "]:\t";
@@ -137,10 +146,12 @@ void setup()
 	
 	writeOut(messages.init2);
 	
-	writeOut(messages.buzzer_init);
-	buzzer.turnOn();
-	delay(100);
-	buzzer.turnOff();
+	#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
+	  writeOut(messages.buzzer_init);
+	  buzzer.turnOn();
+	  delay(100);
+	  buzzer.turnOff();
+	#endif
 	
 	writeOut(messages.rgb_init);
 	rgb.setColor(BLUE);
@@ -157,18 +168,29 @@ void setup()
 		for(;;){}
 	}
 	
-	// Wait for ignition sequence to be started.
-	writeOut(messages.wait);
-	rgb.setColor(GREEN);
+	writeOut(messages.testok);
+	
+	#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
+	  // Wait for ignition sequence to be started.
+	  writeOut(messages.wait);
+	  rgb.setColor(GREEN);
+	  
+	  for (int i = 0; i < 10; i++)
+	  {
+	  	delay(1000);
+	  }
 	
 	
-	// Arm rocket, turn on launch warnings
-	writeOut(messages.warn);
+	  // Arm rocket, turn on launch warnings
+	  writeOut(messages.warn);
+	  
+	  // If all went well, LAUNCH
+	  writeOut(messages.launch1);
+	  writeOut(to_string(micros()));
+	  writeOut(messages.launch2);
+	#endif
 	
-	// If all went well, LAUNCH
-	writeOut(messages.launch1);
-	writeOut(to_string(micros()));
-	writeOut(messages.launch2);
+	writeOut(messages.startdatalog);
 	rgb.setColor(RED);
 
 }
