@@ -103,7 +103,7 @@ const struct
 	std::string rgb_init = "Initializing RGB LED...\n";
 	std::string test = "INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n";
 	std::string test_err = "--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n";
-	std::string testok = "TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n";
+	std::string test_ok = "TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n";
 	std::string wait = "ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n";
 	std::string warn = "LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n";
 	std::string launch1 = "--------------------------------------------\nLIFTOFF_\nIGNITION AT: ";
@@ -129,7 +129,7 @@ void logData(std::string message, std::string devicename);
 */
 void setup()
 {
-	// Initialize all components, report if there is an error.
+	// Begin initialization. Write out welcome message.
 	Serial.begin(BAUD_RATE);
 	writeOut(messages.init1);
 	
@@ -146,15 +146,17 @@ void setup()
 	
 	writeOut(messages.init2);
 	
+	// Initialize sensors
+	writeOut(messages.rgb_init);
+	rgb.setColor(BLUE);
+	
+	// Initialize components needed for launch
 	#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
 	  writeOut(messages.buzzer_init);
 	  buzzer.turnOn();
 	  delay(100);
 	  buzzer.turnOff();
 	#endif
-	
-	writeOut(messages.rgb_init);
-	rgb.setColor(BLUE);
 	
 	// Test all components, report if there is an error.
 	writeOut(messages.test);
@@ -168,10 +170,11 @@ void setup()
 		for(;;){}
 	}
 	
-	writeOut(messages.testok);
+	writeOut(messages.test_ok);
 	
+	// If launch mode enabled, follow launch prcedure
 	#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
-	  // Wait for ignition sequence to be started.
+		// Wait for ignition sequence to be started.
 	  writeOut(messages.wait);
 	  rgb.setColor(GREEN);
 	  
@@ -203,10 +206,25 @@ void loop()
 {
 	// Take measurements
 	
+	// If staging mode enabled, compare readings with trigger
+	#if defined LAUNCH_LOG_STAGE
+		#if defined PRESSURE
+		
+		#else
+			#if defined ALTITUDE
+			
+			#endif
+		#endif
+	#endif
+	
 	// Save measurements to file
 	logData("DATA HERE", "BMP180"); // TEMPORARY
 	
 	// Create new file every few intervals
+	
+	
+	// Check to see if it's time to stop the recording
+	
 }
 
 /**
@@ -232,7 +250,9 @@ void logData(std::string message, std::string devicename)
 void writeOut(std::string message)
 {
 	Serial.print(message);
+	
 	// Write to SD card
+	
 }
 
 /**
