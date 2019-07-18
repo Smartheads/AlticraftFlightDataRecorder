@@ -25,7 +25,7 @@ Alticraft Flight Data Recorder has three main operational modes. The desired mod
 The three core operation modes:
 * PASSIVE_LOG: Only log flight data. Disables launch and staging control.
 * ONLY_LAUNCH_AND_LOG: Enables only launch control and flight data logging.
-* AUNCH_LOG_STAGE: Enables all features including launch, staging control and flight data logging.
+* LAUNCH_LOG_STAGE: Enables all features including launch, staging control and flight data logging.
 
 If a mode is selected, which supports staging, a trigger must be selected too. This can be done in the source code’s main file under the operation mode selector. There are two trigger modes.
 
