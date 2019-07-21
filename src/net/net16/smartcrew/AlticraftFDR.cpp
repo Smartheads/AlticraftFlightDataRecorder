@@ -94,7 +94,7 @@ typedef struct
 
 const struct
 {
-	std::string init1 = "--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: 2019.07.17\nOPERATION MODE: " + std::string(OPERATION_MODE) + "\n";
+	std::string init1 = "--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + std::string(__DATE__) + "\nOPERATION MODE: " + std::string(OPERATION_MODE) + "\n";
 	std::string trig1 = "STAGING TRIGGER MODE: " + std::string(TRIGGER_MODE) + "\nTRIGGER VALUE: ";
 	std::string init2 = "--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n";
 	std::string buzzer_init = "Initializing buzzer...\n";
