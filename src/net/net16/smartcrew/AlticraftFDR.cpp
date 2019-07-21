@@ -28,10 +28,8 @@
 
 #include <string>
 #include <sstream>
-#include "Arduino.h"
-#include "RGBLED.h"
-#include "Buzzer.h"
-
+#include <RGBLED.h>
+#include <Buzzer.h>
 
 xSerial Serial; //TEMPORARY
 
@@ -117,8 +115,8 @@ const struct
 template <class T>
 inline std::string to_string (const T& t);
 
-rgbled rgb(pins::red, pins::green, pins::blue);
-Buzzer buzzer(pins::buzzer);
+SRL::rgbled rgb(pins::red, pins::green, pins::blue);
+SRL::Buzzer buzzer(pins::buzzer);
 
 void writeOut(std::string message);
 void logData(std::string message, std::string devicename);
