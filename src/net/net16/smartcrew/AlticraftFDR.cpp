@@ -25,9 +25,6 @@
 *   Execution start here. Program features specified in the SRS.
 *
 */
-
-#include <string.h>
-#include <sstream.h>
 #include <RGBLED.h>
 #include <Buzzer.h>
 
@@ -189,7 +186,7 @@ void setup()
     
     // If all went well, LAUNCH
     writeOut(messages.launch1);
-    writeOut(to_string(micros()));
+    writeOut(String(micros()));
     writeOut(messages.launch2);
   #endif
   
@@ -234,7 +231,7 @@ void loop()
 void logData(std::string message, std::string devicename)
 {
   writeOut(messages.dataheader1);
-  writeOut(to_string(micros()));
+  writeOut(String(micros()));
   writeOut(messages.dataheader2);
   writeOut(devicename);
   writeOut(messages.dataheader3);
@@ -253,16 +250,4 @@ void writeOut(std::string message)
   
   // Write to SD card
   
-}
-
-/**
-* Converts class T into an std::string object.
-*
-*/
-template <class T>
-inline std::string to_string (const T& t)
-{
-  std::stringstream ss;
-  ss << t;
-  return ss.str();
 }
