@@ -32,7 +32,8 @@
 
 /* BEGINNING OF PROGRAM PREFERENCES */
 
-#define DEBUG ON                      // Comment this line out if you don't want debug
+//#define DEBUG ON                      // Comment this line out if you don't want debug
+#define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between savin into a new file (us)
 
 #define BAUD_RATE 115200              // Change baud rate here
 #define ONLY_LAUNCH_AND_LOG ACTIVE            // Change operation mode here
@@ -118,6 +119,10 @@ typedef struct
 #define VOLUME_TYPE "VOLUME TYPE: FAT"
 #define VOLUME_SIZE1 "VOLUME SIZE: "
 #define VOLUME_SIZE2 " kb_\n"
+#define SD_INIT_ERR "Error initializing SD card...\n"
+#define VOLUME_INIT_ERR "Error initializing SD volume...\n"
+#define MK_WORKSP_ERR "Error creating workspace...\n"
+#define OP_WORKSP_ERR "Error opening workspace...\n"
 #define END_LINE "_\n"
 #define TEST "INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"
 #define TEST_ERR "--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"
@@ -139,10 +144,14 @@ SRL::rgbled rgb(pins::red, pins::green, pins::blue);
 SRL::Buzzer buzzer(pins::buzzer);
 Sd2Card sdcard;
 SdVolume sdvolume;
-SdFile sdfile;
+SdFile* logfile;
+SdFile sdfilemanager;
+
+bool rw_active = false;
 
 void writeOut(std::string message);
 void logData(std::string message, std::string devicename);
+void createNewLogFile(SdFile* logfile);
 
 /**
 * Execution starts here.
@@ -187,6 +196,16 @@ void setup()
   #ifdef DEBUG
     writeOut(SD_INIT);
   #endif
+
+  /* byte sdtest
+  * 0000 - four bits
+  * 000X - SD card init
+  * 00X0 - SD volume init
+  * 0X00 - create new dir
+  * X000 - open workspace dir
+  * 
+  * OK only if sdtest == 15
+  */
   byte sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
   #ifdef DEBUG
     writeOut(SD_TYPE);
@@ -223,17 +242,81 @@ void setup()
         writeOut(VOLUME_SIZE2);
       }
     #endif
+
+    // Create a new directory to log data into and open it
+    sdtest = (sdtest << 1) | sdfilemanager.openRoot(sdvolume);
+
+    if(sdtest == 7)
+    {
+      String dirname = __DATE__;
+      while (!sdfilemanager.makeDir(new SdFile(), dirname.c_str()))
+      {
+        dirname += "a";
+      }
+  
+      sdtest = (sdtest << 1) | sdfilemanager.open(&sdfilemanager, dirname.c_str(), O_RDWR);
+      rw_active = true;
+    }
   }
   
   // Test all components, report if there is an error.
+  bool ok = true;
+  
   #ifdef DEBUG
+    // Debug the error
     writeOut(TEST);
+
+    // Debug sd card
+    ok = false;
+    switch (sdtest)
+    {
+      case 0:
+        writeOut(SD_INIT_ERR);
+        break;
+
+      case 1:
+        writeOut(VOLUME_INIT_ERR);
+        break;
+
+      case 3:
+        writeOut(MK_WORKSP_ERR);
+        break;
+
+      case 7:
+        writeOut(OP_WORKSP_ERR);
+        break;
+
+      case 15:
+        ok = true;
+        break;
+
+      default:
+        break;
+    }
+
+    // If not ok, print error to screen
+    if (!ok)
+    {
+      writeOut(TEST_ERR);
+    }
+
+  #else
+    // True if any component fails
+    ok = (sdtest == 15);
   #endif
+
+  if (!ok)
+  {
+    rgb.setColor(WHITE);
+      
+    // Wait forever (until the user reboots the system)
+    for(;;){}
+  }
   
   if (false) //TEMPORARY, true if an error occures
   {
     #ifdef DEBUG
-      writeOut(TEST_ERR);
+      
     #endif
     rgb.setColor(WHITE);
     
@@ -275,6 +358,8 @@ void setup()
   #endif
   rgb.setColor(RED);
 
+  logfile = new SdFile();
+  createNewLogFile(logfile);
 }
 
 /**
@@ -300,7 +385,13 @@ void loop()
   logData("DATA HERE", "BMP180"); // TEMPORARY
   
   // Create new file every few intervals
-  
+  static unsigned long lasttime = micros();
+
+  if (lasttime + NEWFILE_INTERVAL_TIME >= micros())
+  {
+    // Create a new file
+    createNewLogFile(logfile);
+  }
   
   // Check to see if it's time to stop the recording
   
@@ -331,5 +422,19 @@ void writeOut(std::string message)
   Serial.print(message);
   
   // Write to SD card
-  
+  if (rw_active)
+  {
+    logfile->write(message.c_str());
+  }
+}
+
+/**
+* Creates a new logfile. 
+* 
+* @param logfile Reference to SdFile.
+*/
+void createNewLogFile(SdFile* logfile)
+{
+  logfile->close();
+  bool ok = logfile->createContiguous(sdfilemanager, ("log_" + String(micros()) + ".d").c_str(), 1) == 1;
 }
