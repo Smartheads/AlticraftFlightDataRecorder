@@ -28,14 +28,15 @@
 #include <RGBLED.h>
 #include <SPI.h>
 #include <SD.h>
+#include <avr/pgmspace.h>
 
 /* BEGINNING OF PROGRAM PREFERENCES */
 
-//#define DEBUG ON                      // Comment this line out if you don't want debug
+#define DEBUG ON                      // Comment this line out if you don't want debug
 #define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between savin into a new file (us)
 #define BAUD_RATE 115200              // Change baud rate here
 
-#define ONLY_LAUNCH_AND_LOG ACTIVE            // Change operation mode here
+#define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
 
 /*  OPERATION MODES: (use double quotes)
 *     - "PASSIVE_LOG": Only log flight data. Disables launch and staging features.
@@ -104,41 +105,51 @@
 #define MPU9260 "MPU9250"
 /* END of device names */
 
-/* Messages */
-#define INIT1 "--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + std::string(__DATE__) + "\nOPERATION MODE: " + std::string(OPERATION_MODE) + "\n"
-#define TRIG1 "STAGING TRIGGER MODE: " + std::string(TRIGGER_MODE) + "\nTRIGGER VALUE: "
-#define INIT2 "--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n"
-#define BUZZER_INIT "Initializing buzzer...\n"
-#define RGB_INIT "Initializing RGB LED...\n"
-#define SD_INIT "Initializing SD module...\n"
-#define SD_TYPE "CARD TYPE: "
-#define SD_CLUSTERS "CLUSTERS: "
-#define SD_BLOCKSPERCLUSTER "BLOCKS x CLUSTER: "
-#define SD_TOTALBLOCKS "TOTAL BLOCKS: "
-#define VOLUME_TYPE "VOLUME TYPE: FAT"
-#define VOLUME_SIZE1 "VOLUME SIZE: "
-#define VOLUME_SIZE2 " kb_\n"
-#define SD_INIT_ERR "Error initializing SD card...\n"
-#define VOLUME_INIT_ERR "Error initializing SD volume...\n"
-#define MK_WORKSP_ERR "Error creating workspace...\n"
-#define OP_WORKSP_ERR "Error opening workspace...\n"
-#define END_LINE "_\n"
-#define TEST "INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"
-#define TEST_ERR "--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"
-#define TEST_OK "TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"
-#define WAIT "ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n"
-#define WARN "LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n"
-#define LAUNCH1 "--------------------------------------------\nLIFTOFF_\nIGNITION AT: "
-#define LAUNCH2 " microseconds_\n"
-#define STARTDATALOG "--------------------------------------------\n"
+/* Messages that cant be saved to PROGMEM */
 #define DATAHEADER1 "[+"
 #define DATAHEADER2 "us/"
 #define DATAHEADER3 "]:\t"
+
+/* All other messages */
+const char init2[] PROGMEM = {"--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n"};
+const char buzzer_init[] PROGMEM = {"Initializing buzzer...\n"};
+const char rgb_init[] PROGMEM = {"Initializing RGB LED...\n"};
+const char sd_init[] PROGMEM = {"Initializing SD module...\n"};
+const char sd_type1[] PROGMEM = {"CARD TYPE: "};
+const char sd_clusters[] PROGMEM = {"CLUSTERS: "};
+const char sd_blockspersecond[] PROGMEM = {"BLOCKS x CLUSTER: "};
+const char sd_totalblocks[] PROGMEM = {"TOTAL BLOCKS: "};
+const char volume_type[] PROGMEM = {"VOLUME TYPE: FAT"};
+const char volume_size1[] PROGMEM = {"VOLUME SIZE: "};
+const char volume_size2[] PROGMEM = {" kb_\n"};
+const char end_line[] PROGMEM = {"_\n"};
+const char test[] PROGMEM = {"INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"};
+const char test_err[] PROGMEM = {"--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
+const char test_ok[] PROGMEM = {"TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"};
+const char sd_init_err[] PROGMEM = {"Error initializing SD card...\n"};
+const char volume_init_err[] PROGMEM = {"Error initializing SD volume...\n"};
+const char mk_worksp_err[] PROGMEM = {"Error creating workspace...\n"};
+const char op_worksp_err[] PROGMEM = {"Error opening workspace...\n"};
+const char wait[] PROGMEM = {"ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n"};
+const char warn[] PROGMEM = {"LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n"};
+const char launch1[] PROGMEM = {"--------------------------------------------\nLIFTOFF_\nIGNITION AT: "};
+const char launch2[] PROGMEM = {" microseconds_\n"};
+const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
+const char init1[] PROGMEM = {("--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + String(__DATE__) + "\nOPERATION MODE: " + String(OPERATION_MODE) + "\n").c_str()};
+const char trig1[] PROGMEM = {("STAGING TRIGGER MODE: " + String(TRIGGER_MODE) + "\nTRIGGER VALUE: ").c_str()};
+
+const char* const messages[] PROGMEM =
+{
+  init2, buzzer_init, rgb_init, sd_init, sd_type1, sd_clusters, sd_blockspersecond,
+  sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err,
+  test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
+  launch1, launch2, startdatalog, init1, trig1
+};
 /* END of messages */
 
 /* Program variables */
 #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
-  SRL::Buzzer buzzer(BUZZER_PIN);
+  SRL::Buzzer const* buzzer;
 #endif
 
 SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
@@ -151,8 +162,8 @@ bool rw_active = false;
 /* END of program variables */
 
 /* Function prototypes */
-void writeOut(String message);
-void logData(String message, String devicename);
+void writeOut(char const* message);
+void logData(char const* message, char const* devicename);
 void createNewLogFile(SdFile* logfile);
 
 /* END of function prototypes */
@@ -166,39 +177,41 @@ void setup()
   // Begin initialization. Write out welcome message.
   #ifdef DEBUG
     Serial.begin(BAUD_RATE);
-    writeOut(INIT1);
+    writeOut((char*)pgm_read_word(&messages[24]));
     
     #if defined LAUNCH_LOG_STAGE
+      writeOut((char*)pgm_read_word(&messages[25]));
       #if defined PRESSURE
-        writeOut(to_string(TRIGGER_PRESSURE) + " kPa\n");
+        writeOut((String(TRIGGER_PRESSURE) + F(" kPa\n")).c_str());
       #else
         #if defined ALTITUDE
-          writeOut(to_string(TRIGGER_ALTITUDE) + " m\n");
+          writeOut((String(TRIGGER_ALTITUDE) + F(" m\n")).c_str());
         #endif
       #endif
     #endif
 
-    writeOut(INIT2);
+    writeOut((char*)pgm_read_word(&messages[0]));
   #endif
   
   // Initialize sensors
   #ifdef DEBUG
-    writeOut(RGB_INIT);
+    writeOut((char*)pgm_read_word(&messages[2]));
   #endif
   rgb.setColor(BLUE);
   
   // Initialize components needed for launch
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
     #ifdef DEBUG
-      writeOut(BUZZER_INIT);
+      writeOut((char*)pgm_read_word(&messages[1]));
     #endif
-    buzzer.turnOn();
+    buzzer = new SRL::Buzzer(BUZZER_PIN);
+    buzzer->turnOn();
     delay(100);
-    buzzer.turnOff();
+    buzzer->turnOff();
   #endif
 
   #ifdef DEBUG
-    writeOut(SD_INIT);
+    writeOut((char*)pgm_read_word(&messages[3]));
   #endif
 
   /* byte sdtest
@@ -212,9 +225,9 @@ void setup()
   */
   byte sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
   #ifdef DEBUG
-    writeOut(SD_TYPE);
+    writeOut((char*)pgm_read_word(&messages[4]));
     writeOut(sdcard.type());
-    writeOut(END_LINE);
+    writeOut((char*)pgm_read_word(&messages[11]));
   #endif
 
   // Initialize volume if card checks out
@@ -225,25 +238,25 @@ void setup()
     #ifdef DEBUG
       if(sdtest == 3)
       {
-        writeOut(SD_CLUSTERS);
+        writeOut((char*)pgm_read_word(&messages[5]));
         writeOut(sdvolume.clusterCount());
-        writeOut(END_LINE);
+        writeOut((char*)pgm_read_word(&messages[11]));
   
-        writeOut(SD_BLOCKSPERCLUSTER);
+        writeOut((char*)pgm_read_word(&messages[6]));
         writeOut(sdvolume.blocksPerCluster());
-        writeOut(END_LINE);
+        writeOut((char*)pgm_read_word(&messages[11]));
   
-        writeOut(SD_TOTALBLOCKS);
+        writeOut((char*)pgm_read_word(&messages[7]));
         writeOut(sdvolume.blocksPerCluster() * sdvolume.clusterCount());
-        writeOut(END_LINE);
+        writeOut((char*)pgm_read_word(&messages[11]));
   
-        writeOut(VOLUME_TYPE);
+        writeOut((char*)pgm_read_word(&messages[8]));
         writeOut(sdvolume.fatType());
-        writeOut(END_LINE);
+        writeOut((char*)pgm_read_word(&messages[11]));
   
-        writeOut(VOLUME_SIZE1);
+        writeOut((char*)pgm_read_word(&messages[9]));
         writeOut(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2);
-        writeOut(VOLUME_SIZE2);
+        writeOut((char*)pgm_read_word(&messages[10]));
       }
     #endif
 
@@ -268,26 +281,26 @@ void setup()
   
   #ifdef DEBUG
     // Debug the error
-    writeOut(TEST);
+    writeOut((char*)pgm_read_word(&messages[12]));
 
     // Debug sd card
     ok = false;
     switch (sdtest)
     {
       case 0:
-        writeOut(SD_INIT_ERR);
+        writeOut((char*)pgm_read_word(&messages[15]));
         break;
 
       case 1:
-        writeOut(VOLUME_INIT_ERR);
+        writeOut((char*)pgm_read_word(&messages[16]));
         break;
 
       case 3:
-        writeOut(MK_WORKSP_ERR);
+        writeOut((char*)pgm_read_word(&messages[17]));
         break;
 
       case 7:
-        writeOut(OP_WORKSP_ERR);
+        writeOut((char*)pgm_read_word(&messages[18]));
         break;
 
       case 15:
@@ -301,7 +314,11 @@ void setup()
     // If not ok, print error to screen
     if (!ok)
     {
-      writeOut(TEST_ERR);
+      writeOut((char*)pgm_read_word(&messages[13]));
+    }
+    else
+    {
+      writeOut((char*)pgm_read_word(&messages[14]));
     }
 
   #else
@@ -317,25 +334,10 @@ void setup()
     for(;;){}
   }
   
-  if (false) //TEMPORARY, true if an error occures
-  {
-    #ifdef DEBUG
-      
-    #endif
-    rgb.setColor(WHITE);
-    
-    // Wait forever (until the user reboots the system)
-    for(;;){}
-  }
-
-  #ifdef DEBUG
-    writeOut(TEST_OK);
-  #endif
-  
   // If launch mode enabled, follow launch prcedure
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
     #ifdef DEBUG
-      writeOut(WAIT);
+      writeOut((char*)pgm_read_word(&messages[19]));
     #endif
     rgb.setColor(GREEN);
 
@@ -347,32 +349,32 @@ void setup()
     rgb.setColor(GREEN);
 
     // Arm rocket, turn on launch warnings
-    buzzer.turnOn();
+    buzzer->turnOn();
 
     for (int i = 0; i < 10; i++)
     {
       delay(1000);
     }
 
-    buzzer.turnOff();
+    buzzer->turnOff();
 
     // Buzzer no longer needed, destruct
-    (&buzzer)->~Buzzer();
+    buzzer->~Buzzer();
 
     // Ignite rocket (first stage)
   
     #ifdef DEBUG
-      writeOut(WARN);
+      writeOut((char*)pgm_read_word(&messages[20]));
     
       // If all went well, LAUNCH
-      writeOut(LAUNCH1);
-      writeOut(String(micros()));
-      writeOut(LAUNCH2);
+      writeOut((char*)pgm_read_word(&messages[21]));
+      writeOut(String(micros()).c_str());
+      writeOut((char*)pgm_read_word(&messages[22]));
     #endif
   #endif
 
   #ifdef DEBUG
-    writeOut(STARTDATALOG);
+    writeOut((char*)pgm_read_word(&messages[23]));
   #endif
   rgb.setColor(RED);
 
@@ -419,10 +421,10 @@ void loop()
 * Log data recorded by instruments.
 *
 */
-void logData(String message, String devicename)
+void logData(char const* message, char const* devicename)
 {
   writeOut(DATAHEADER1);
-  writeOut(String(micros()));
+  writeOut(String(micros()).c_str());
   writeOut(DATAHEADER2);
   writeOut(devicename);
   writeOut(DATAHEADER3);
@@ -435,14 +437,14 @@ void logData(String message, String devicename)
 *
 * @param message
 */
-void writeOut(String message)
+void writeOut(char const* message)
 {
   Serial.print(message);
   
   // Write to SD card
   if (rw_active)
   {
-    logfile->write(message.c_str());
+    logfile->write(message);
   }
 }
 
