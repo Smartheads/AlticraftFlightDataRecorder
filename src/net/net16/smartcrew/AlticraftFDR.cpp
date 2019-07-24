@@ -34,8 +34,8 @@
 
 //#define DEBUG ON                      // Comment this line out if you don't want debug
 #define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between savin into a new file (us)
-
 #define BAUD_RATE 115200              // Change baud rate here
+
 #define ONLY_LAUNCH_AND_LOG ACTIVE            // Change operation mode here
 
 /*  OPERATION MODES: (use double quotes)
