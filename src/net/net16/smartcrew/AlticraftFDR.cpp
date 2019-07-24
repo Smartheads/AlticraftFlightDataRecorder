@@ -89,21 +89,11 @@
   #define TRIGGER_MODE "PRESSURE"
 #endif
 
-namespace std
-{
-  typedef String string;
-}
-
-typedef struct
-{
-  enum : uint8_t
-  {
-    red = 2,
-    green = 4,
-    blue = 5,
-    buzzer = 9
-  };
-} pins;
+/* Pins */
+#define RED_PIN 2
+#define GREEN_PIN 4
+#define BLUE_PIN 5
+#define BUZZER_PIN 9
 
 /* Messages */
 #define INIT1 "--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + std::string(__DATE__) + "\nOPERATION MODE: " + std::string(OPERATION_MODE) + "\n"
@@ -137,11 +127,8 @@ typedef struct
 #define DATAHEADER3 "]:\t"
 /* END of messages */
 
-template <class T>
-inline std::string to_string (const T& t);
-
-SRL::rgbled rgb(pins::red, pins::green, pins::blue);
-SRL::Buzzer buzzer(pins::buzzer);
+SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
+SRL::Buzzer buzzer(BUZZER_PIN);
 Sd2Card sdcard;
 SdVolume sdvolume;
 SdFile* logfile;
@@ -149,8 +136,8 @@ SdFile sdfilemanager;
 
 bool rw_active = false;
 
-void writeOut(std::string message);
-void logData(std::string message, std::string devicename);
+void writeOut(String message);
+void logData(String message, String devicename);
 void createNewLogFile(SdFile* logfile);
 
 /**
@@ -330,19 +317,33 @@ void setup()
   
   // If launch mode enabled, follow launch prcedure
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
-    // Wait for ignition sequence to be started.
     #ifdef DEBUG
       writeOut(WAIT);
     #endif
     rgb.setColor(GREEN);
+
+    // Wait for ignition sequence to be started.
     
+    // Give feedback to the user
+    rgb.setColor(RED);
+    delay(500);
+    rgb.setColor(GREEN);
+
+    // Arm rocket, turn on launch warnings
+    buzzer.turnOn();
+
     for (int i = 0; i < 10; i++)
     {
       delay(1000);
     }
+
+    buzzer.turnOff();
+
+    // Buzzer no longer needed, destruct
+    (&buzzer)->~Buzzer();
+
+    // Ignite rocket (first stage)
   
-  
-    // Arm rocket, turn on launch warnings
     #ifdef DEBUG
       writeOut(WARN);
     
@@ -401,7 +402,7 @@ void loop()
 * Log data recorded by instruments.
 *
 */
-void logData(std::string message, std::string devicename)
+void logData(String message, String devicename)
 {
   writeOut(DATAHEADER1);
   writeOut(String(micros()));
@@ -417,7 +418,7 @@ void logData(std::string message, std::string devicename)
 *
 * @param message
 */
-void writeOut(std::string message)
+void writeOut(String message)
 {
   Serial.print(message);
   
