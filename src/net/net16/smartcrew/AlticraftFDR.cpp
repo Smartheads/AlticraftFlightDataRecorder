@@ -26,7 +26,6 @@
 *
 */
 #include <RGBLED.h>
-#include <Buzzer.h>
 #include <SPI.h>
 #include <SD.h>
 
@@ -65,6 +64,10 @@
 
 /* END OF PREFERENCES*/
 
+#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
+  #include <Buzzer.h>
+#endif
+
 /* 
 * Preprocessing settings
 *
@@ -94,6 +97,12 @@
 #define GREEN_PIN 4
 #define BLUE_PIN 5
 #define BUZZER_PIN 9
+/* END of pins */
+
+/* Device names */
+#define BMP280 "BMP280"
+#define MPU9260 "MPU9250"
+/* END of device names */
 
 /* Messages */
 #define INIT1 "--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + std::string(__DATE__) + "\nOPERATION MODE: " + std::string(OPERATION_MODE) + "\n"
@@ -127,18 +136,26 @@
 #define DATAHEADER3 "]:\t"
 /* END of messages */
 
+/* Program variables */
+#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
+  SRL::Buzzer buzzer(BUZZER_PIN);
+#endif
+
 SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
-SRL::Buzzer buzzer(BUZZER_PIN);
 Sd2Card sdcard;
 SdVolume sdvolume;
 SdFile* logfile;
 SdFile sdfilemanager;
 
 bool rw_active = false;
+/* END of program variables */
 
+/* Function prototypes */
 void writeOut(String message);
 void logData(String message, String devicename);
 void createNewLogFile(SdFile* logfile);
+
+/* END of function prototypes */
 
 /**
 * Execution starts here.
