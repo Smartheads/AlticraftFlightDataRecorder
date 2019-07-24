@@ -27,8 +27,12 @@
 */
 #include <RGBLED.h>
 #include <Buzzer.h>
+#include <SPI.h>
+#include <SD.h>
 
-/* BEGINNING OF PROGRAM PREFERANCES */
+/* BEGINNING OF PROGRAM PREFERENCES */
+
+#define DEBUG ON                      // Comment this line out if you don't want debug
 
 #define BAUD_RATE 115200              // Change baud rate here
 #define ONLY_LAUNCH_AND_LOG ACTIVE            // Change operation mode here
@@ -47,6 +51,15 @@
 /*  STAGE TRIGGER MODES: (use double quotes)
 *     - "ALTITUDE": Activate staging at a specific altitude. (m)
 *     - "PRESSURE": Activate staging at a specific pressure. (kPa)
+*/
+
+#define SD_CHIP_SELECT 10             // Change this to match your SD shield or module
+
+/* SD_CHIP_SELECT options:
+*    - 4: Arduino Ethernet shield
+*    - 10: Adafruit SD shields and modules, Catalex SD card adapter
+*    - 8 Sparkfun SD shield
+*    - SDCARD_SS_PIN: MKRZero SD
 */
 
 /* END OF PREFERENCES*/
@@ -91,31 +104,42 @@ typedef struct
   };
 } pins;
 
-const struct
-{
-  std::string init1 = "--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + std::string(__DATE__) + "\nOPERATION MODE: " + std::string(OPERATION_MODE) + "\n";
-  std::string trig1 = "STAGING TRIGGER MODE: " + std::string(TRIGGER_MODE) + "\nTRIGGER VALUE: ";
-  std::string init2 = "--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n";
-  std::string buzzer_init = "Initializing buzzer...\n";
-  std::string rgb_init = "Initializing RGB LED...\n";
-  std::string test = "INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n";
-  std::string test_err = "--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n";
-  std::string test_ok = "TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n";
-  std::string wait = "ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n";
-  std::string warn = "LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n";
-  std::string launch1 = "--------------------------------------------\nLIFTOFF_\nIGNITION AT: ";
-  std::string launch2 = " microseconds_\n";
-  std::string startdatalog = "--------------------------------------------\n";
-  std::string dataheader1 = "[+";
-  std::string dataheader2 = "us/";
-  std::string dataheader3 = "]:\t";
-} messages;
+/* Messages */
+#define INIT1 "--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + std::string(__DATE__) + "\nOPERATION MODE: " + std::string(OPERATION_MODE) + "\n"
+#define TRIG1 "STAGING TRIGGER MODE: " + std::string(TRIGGER_MODE) + "\nTRIGGER VALUE: "
+#define INIT2 "--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n"
+#define BUZZER_INIT "Initializing buzzer...\n"
+#define RGB_INIT "Initializing RGB LED...\n"
+#define SD_INIT "Initializing SD module...\n"
+#define SD_TYPE "CARD TYPE: "
+#define SD_CLUSTERS "CLUSTERS: "
+#define SD_BLOCKSPERCLUSTER "BLOCKS x CLUSTER: "
+#define SD_TOTALBLOCKS "TOTAL BLOCKS: "
+#define VOLUME_TYPE "VOLUME TYPE: FAT"
+#define VOLUME_SIZE1 "VOLUME SIZE: "
+#define VOLUME_SIZE2 " kb_\n"
+#define END_LINE "_\n"
+#define TEST "INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"
+#define TEST_ERR "--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"
+#define TEST_OK "TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"
+#define WAIT "ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n"
+#define WARN "LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n"
+#define LAUNCH1 "--------------------------------------------\nLIFTOFF_\nIGNITION AT: "
+#define LAUNCH2 " microseconds_\n"
+#define STARTDATALOG "--------------------------------------------\n"
+#define DATAHEADER1 "[+"
+#define DATAHEADER2 "us/"
+#define DATAHEADER3 "]:\t"
+/* END of messages */
 
 template <class T>
 inline std::string to_string (const T& t);
 
 SRL::rgbled rgb(pins::red, pins::green, pins::blue);
 SRL::Buzzer buzzer(pins::buzzer);
+Sd2Card sdcard;
+SdVolume sdvolume;
+SdFile sdfile;
 
 void writeOut(std::string message);
 void logData(std::string message, std::string devicename);
@@ -127,52 +151,106 @@ void logData(std::string message, std::string devicename);
 void setup()
 {
   // Begin initialization. Write out welcome message.
-  Serial.begin(BAUD_RATE);
-  writeOut(messages.init1);
-  
-  #if defined LAUNCH_LOG_STAGE
-    writeOut(messages.trig1);
-    #if defined PRESSURE
-      writeOut(to_string(TRIGGER_PRESSURE) + " kPa\n");
-    #else
-      #if defined ALTITUDE
-        writeOut(to_string(TRIGGER_ALTITUDE) + " m\n");
+  #ifdef DEBUG
+    Serial.begin(BAUD_RATE);
+    writeOut(INIT1);
+    
+    #if defined LAUNCH_LOG_STAGE
+      #if defined PRESSURE
+        writeOut(to_string(TRIGGER_PRESSURE) + " kPa\n");
+      #else
+        #if defined ALTITUDE
+          writeOut(to_string(TRIGGER_ALTITUDE) + " m\n");
+        #endif
       #endif
     #endif
+
+    writeOut(INIT2);
   #endif
   
-  writeOut(messages.init2);
-  
   // Initialize sensors
-  writeOut(messages.rgb_init);
+  #ifdef DEBUG
+    writeOut(RGB_INIT);
+  #endif
   rgb.setColor(BLUE);
   
   // Initialize components needed for launch
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
-    writeOut(messages.buzzer_init);
+    #ifdef DEBUG
+      writeOut(BUZZER_INIT);
+    #endif
     buzzer.turnOn();
     delay(100);
     buzzer.turnOff();
   #endif
+
+  #ifdef DEBUG
+    writeOut(SD_INIT);
+  #endif
+  byte sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
+  #ifdef DEBUG
+    writeOut(SD_TYPE);
+    writeOut(sdcard.type());
+    writeOut(END_LINE);
+  #endif
+
+  // Initialize volume if card checks out
+  if (sdtest)
+  {
+    sdtest = (sdtest << 1) | sdvolume.init(sdcard);
+
+    #ifdef DEBUG
+      if(sdtest == 3)
+      {
+        writeOut(SD_CLUSTERS);
+        writeOut(sdvolume.clusterCount());
+        writeOut(END_LINE);
+  
+        writeOut(SD_BLOCKSPERCLUSTER);
+        writeOut(sdvolume.blocksPerCluster());
+        writeOut(END_LINE);
+  
+        writeOut(SD_TOTALBLOCKS);
+        writeOut(sdvolume.blocksPerCluster() * sdvolume.clusterCount());
+        writeOut(END_LINE);
+  
+        writeOut(VOLUME_TYPE);
+        writeOut(sdvolume.fatType());
+        writeOut(END_LINE);
+  
+        writeOut(VOLUME_SIZE1);
+        writeOut(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2);
+        writeOut(VOLUME_SIZE2);
+      }
+    #endif
+  }
   
   // Test all components, report if there is an error.
-  writeOut(messages.test);
+  #ifdef DEBUG
+    writeOut(TEST);
+  #endif
   
   if (false) //TEMPORARY, true if an error occures
   {
-    writeOut(messages.test_err);
+    #ifdef DEBUG
+      writeOut(TEST_ERR);
+    #endif
     rgb.setColor(WHITE);
     
     // Wait forever (until the user reboots the system)
     for(;;){}
   }
-  
-  writeOut(messages.test_ok);
+
+  #ifdef DEBUG
+    writeOut(TEST_OK);
+  #endif
   
   // If launch mode enabled, follow launch prcedure
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
     // Wait for ignition sequence to be started.
-    writeOut(messages.wait);
+    #ifdef DEBUG
+      writeOut(WAIT);
+    #endif
     rgb.setColor(GREEN);
     
     for (int i = 0; i < 10; i++)
@@ -182,15 +260,19 @@ void setup()
   
   
     // Arm rocket, turn on launch warnings
-    writeOut(messages.warn);
+    #ifdef DEBUG
+      writeOut(WARN);
     
-    // If all went well, LAUNCH
-    writeOut(messages.launch1);
-    writeOut(String(micros()));
-    writeOut(messages.launch2);
+      // If all went well, LAUNCH
+      writeOut(LAUNCH1);
+      writeOut(String(micros()));
+      writeOut(LAUNCH2);
+    #endif
   #endif
-  
-  writeOut(messages.startdatalog);
+
+  #ifdef DEBUG
+    writeOut(STARTDATALOG);
+  #endif
   rgb.setColor(RED);
 
 }
@@ -230,11 +312,11 @@ void loop()
 */
 void logData(std::string message, std::string devicename)
 {
-  writeOut(messages.dataheader1);
+  writeOut(DATAHEADER1);
   writeOut(String(micros()));
-  writeOut(messages.dataheader2);
+  writeOut(DATAHEADER2);
   writeOut(devicename);
-  writeOut(messages.dataheader3);
+  writeOut(DATAHEADER3);
   writeOut(message);
   writeOut("\n");
 }
