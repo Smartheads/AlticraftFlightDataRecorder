@@ -48,7 +48,7 @@
 *         and flight data logging.
 */
 
-#define PRESSURE ACTIVE               // Change trigger mode here
+#define ALTITUDE ACTIVE               // Change trigger mode here
 #define TRIGGER_ALTITUDE 200          // Change trigger altitude here
 #define TRIGGER_PRESSURE 100.0        // Change trigger pressure here
 
@@ -70,6 +70,9 @@
 
 #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
   #include <Buzzer.h>
+#endif
+#ifdef LAUNCH_LOG_STAGE
+  #include <Servo.h>
 #endif
 
 /* 
@@ -103,6 +106,7 @@
 #define BUZZER_PIN 9
 #define BUTTON_PIN 6
 #define LAUNCH_PIN 8
+#define SERVO_PIN 7
 /* END of pins */
 
 /* Device names */
@@ -144,20 +148,25 @@ const char init1[] PROGMEM = {("--------------------------------------------\nAL
 const char trig1[] PROGMEM = {("STAGING TRIGGER MODE: " + String(TRIGGER_MODE) + "\nTRIGGER VALUE: ").c_str()};
 const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
 const char shutoff1[] PROGMEM = {"--------------------------------------------\nSHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "};
-const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_"};
+const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_\n"};
+const char init_servo[] PROGMEM = {"Initializing servo motor...\n"};
 
 const char* const messages[] PROGMEM =
 {
   init2, buzzer_init, rgb_init, sd_init, sd_type1, sd_clusters, sd_blockspersecond,
   sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err,
   test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
-  launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2
+  launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
+  init_servo
 };
 /* END of messages */
 
 /* Program variables */
 #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
   SRL::Buzzer const* buzzer;
+#endif
+#ifdef LAUNCH_LOG_STAGE
+  Servo stageservo;
 #endif
 
 SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
@@ -221,6 +230,14 @@ void setup()
     #endif
     pinMode(BUTTON_PIN, INPUT);
     pinMode(LAUNCH_PIN, OUTPUT);
+  #endif
+
+  // Initilize components only needed for staging
+  #ifdef LAUNCH_LOG_STAGE
+    #ifdef DEBUG
+      writeOut((char*)pgm_read_word(&messages[29]));
+    #endif
+    stageservo.attach(SERVO_PIN);
   #endif
 
   #ifdef DEBUG
