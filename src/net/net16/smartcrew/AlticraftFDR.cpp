@@ -119,47 +119,49 @@
 #define DATAHEADER2 "us/"
 #define DATAHEADER3 "]:\t"
 
-/* All other messages */
-const char init2[] PROGMEM = {"--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n"};
-const char buzzer_init[] PROGMEM = {"Initializing buzzer...\n"};
-const char rgb_init[] PROGMEM = {"Initializing RGB LED...\n"};
-const char sd_init[] PROGMEM = {"Initializing SD module...\n"};
-const char sd_type1[] PROGMEM = {"CARD TYPE: "};
-const char sd_clusters[] PROGMEM = {"CLUSTERS: "};
-const char sd_blockspersecond[] PROGMEM = {"BLOCKS x CLUSTER: "};
-const char sd_totalblocks[] PROGMEM = {"TOTAL BLOCKS: "};
-const char volume_type[] PROGMEM = {"VOLUME TYPE: FAT"};
-const char volume_size1[] PROGMEM = {"VOLUME SIZE: "};
-const char volume_size2[] PROGMEM = {" kb_\n"};
-const char end_line[] PROGMEM = {"_\n"};
-const char test[] PROGMEM = {"INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"};
-const char test_err[] PROGMEM = {"--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
-const char test_ok[] PROGMEM = {"TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"};
-const char sd_init_err[] PROGMEM = {"Error initializing SD card...\n"};
-const char volume_init_err[] PROGMEM = {"Error initializing SD volume...\n"};
-const char mk_worksp_err[] PROGMEM = {"Error creating workspace...\n"};
-const char op_worksp_err[] PROGMEM = {"Error opening workspace...\n"};
-const char wait[] PROGMEM = {"ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n"};
-const char warn[] PROGMEM = {"LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n"};
-const char launch1[] PROGMEM = {"--------------------------------------------\nLIFTOFF_\nIGNITION AT: "};
-const char launch2[] PROGMEM = {" microseconds_\n"};
-const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
-const char init1[] PROGMEM = {("--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + String(__DATE__) + "\nOPERATION MODE: " + String(OPERATION_MODE) + "\n").c_str()};
-const char trig1[] PROGMEM = {("STAGING TRIGGER MODE: " + String(TRIGGER_MODE) + "\nTRIGGER VALUE: ").c_str()};
-const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
-const char shutoff1[] PROGMEM = {"--------------------------------------------\nSHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "};
-const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_\n"};
-const char init_servo[] PROGMEM = {"Initializing servo motor...\n"};
-
-const char* const messages[] PROGMEM =
-{
-  init2, buzzer_init, rgb_init, sd_init, sd_type1, sd_clusters, sd_blockspersecond,
-  sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err,
-  test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
-  launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
-  init_servo
-};
-/* END of messages */
+#ifdef DEBUG
+  /* All other messages */
+  const char init2[] PROGMEM = {"--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n"};
+  const char buzzer_init[] PROGMEM = {"Initializing buzzer...\n"};
+  const char rgb_init[] PROGMEM = {"Initializing RGB LED...\n"};
+  const char sd_init[] PROGMEM = {"Initializing SD module...\n"};
+  const char sd_type1[] PROGMEM = {"CARD TYPE: "};
+  const char sd_clusters[] PROGMEM = {"CLUSTERS: "};
+  const char sd_blockspersecond[] PROGMEM = {"BLOCKS x CLUSTER: "};
+  const char sd_totalblocks[] PROGMEM = {"TOTAL BLOCKS: "};
+  const char volume_type[] PROGMEM = {"VOLUME TYPE: FAT"};
+  const char volume_size1[] PROGMEM = {"VOLUME SIZE: "};
+  const char volume_size2[] PROGMEM = {" kb_\n"};
+  const char end_line[] PROGMEM = {"_\n"};
+  const char test[] PROGMEM = {"INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"};
+  const char test_err[] PROGMEM = {"--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
+  const char test_ok[] PROGMEM = {"TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"};
+  const char sd_init_err[] PROGMEM = {"Error initializing SD card...\n"};
+  const char volume_init_err[] PROGMEM = {"Error initializing SD volume...\n"};
+  const char mk_worksp_err[] PROGMEM = {"Error creating workspace...\n"};
+  const char op_worksp_err[] PROGMEM = {"Error opening workspace...\n"};
+  const char wait[] PROGMEM = {"ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n"};
+  const char warn[] PROGMEM = {"LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n"};
+  const char launch1[] PROGMEM = {"--------------------------------------------\nLIFTOFF_\nIGNITION AT: "};
+  const char launch2[] PROGMEM = {" microseconds_\n"};
+  const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
+  const char init1[] PROGMEM = {("--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + String(__DATE__) + "\nOPERATION MODE: " + String(OPERATION_MODE) + "\n").c_str()};
+  const char trig1[] PROGMEM = {("STAGING TRIGGER MODE: " + String(TRIGGER_MODE) + "\nTRIGGER VALUE: ").c_str()};
+  const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
+  const char shutoff1[] PROGMEM = {"--------------------------------------------\nSHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "};
+  const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_\n"};
+  const char init_servo[] PROGMEM = {"Initializing servo motor...\n"};
+  
+  const char* const messages[] PROGMEM =
+  {
+    init2, buzzer_init, rgb_init, sd_init, sd_type1, sd_clusters, sd_blockspersecond,
+    sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err,
+    test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
+    launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
+    init_servo
+  };
+  /* END of messages */
+#endif
 
 /* Program variables */
 #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
