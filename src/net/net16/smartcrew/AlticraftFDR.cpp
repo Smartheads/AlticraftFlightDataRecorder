@@ -34,6 +34,9 @@
 
 #define DEBUG ON                      // Comment this line out if you don't want debug
 #define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between savin into a new file (us)
+#define LAUNCH_ARM_TIME 3000          // Change the launch arm time (ms)
+#define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
+#define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
 #define BAUD_RATE 115200              // Change baud rate here
 
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
@@ -98,11 +101,13 @@
 #define GREEN_PIN 4
 #define BLUE_PIN 5
 #define BUZZER_PIN 9
+#define BUTTON_PIN 6
+#define LAUNCH_PIN 8
 /* END of pins */
 
 /* Device names */
-#define BMP280 "BMP280"
-#define MPU9260 "MPU9250"
+#define BMP280 F("BMP280")
+#define MPU9250 F("MPU9250")
 /* END of device names */
 
 /* Messages that cant be saved to PROGMEM */
@@ -137,13 +142,16 @@ const char launch2[] PROGMEM = {" microseconds_\n"};
 const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
 const char init1[] PROGMEM = {("--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + String(__DATE__) + "\nOPERATION MODE: " + String(OPERATION_MODE) + "\n").c_str()};
 const char trig1[] PROGMEM = {("STAGING TRIGGER MODE: " + String(TRIGGER_MODE) + "\nTRIGGER VALUE: ").c_str()};
+const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
+const char shutoff1[] PROGMEM = {"--------------------------------------------\nSHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "};
+const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_"};
 
 const char* const messages[] PROGMEM =
 {
   init2, buzzer_init, rgb_init, sd_init, sd_type1, sd_clusters, sd_blockspersecond,
   sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err,
   test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
-  launch1, launch2, startdatalog, init1, trig1
+  launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2
 };
 /* END of messages */
 
@@ -208,6 +216,11 @@ void setup()
     buzzer->turnOn();
     delay(100);
     buzzer->turnOff();
+    #ifdef DEBUG
+      writeOut((char*)pgm_read_word(&messages[26]));
+    #endif
+    pinMode(BUTTON_PIN, INPUT);
+    pinMode(LAUNCH_PIN, OUTPUT);
   #endif
 
   #ifdef DEBUG
@@ -233,7 +246,7 @@ void setup()
   // Initialize volume if card checks out
   if (sdtest)
   {
-    sdtest = (sdtest << 1) | sdvolume.init(sdcard);
+    sdtest = (sdtest << 1) | sdvolume.init(&sdcard);
 
     #ifdef DEBUG
       if(sdtest == 3)
@@ -261,7 +274,7 @@ void setup()
     #endif
 
     // Create a new directory to log data into and open it
-    sdtest = (sdtest << 1) | sdfilemanager.openRoot(sdvolume);
+    sdtest = (sdtest << 1) | sdfilemanager.openRoot(&sdvolume);
 
     if(sdtest == 7)
     {
@@ -341,27 +354,69 @@ void setup()
     #endif
     rgb.setColor(GREEN);
 
-    // Wait for ignition sequence to be started.
-    
-    // Give feedback to the user
-    rgb.setColor(RED);
-    delay(500);
-    rgb.setColor(GREEN);
-
-    // Arm rocket, turn on launch warnings
-    buzzer->turnOn();
-
-    for (int i = 0; i < 10; i++)
-    {
-      delay(1000);
-    }
-
-    buzzer->turnOff();
-
-    // Buzzer no longer needed, destruct
-    buzzer->~Buzzer();
+    bool* cont;
+    cont = new bool(true);
+    do
+    { 
+      // Wait for ignition sequence to be started.
+      do
+      {
+        while(!digitalRead(BUTTON_PIN));
+        
+        for(unsigned int i = 0; i < LAUNCH_ARM_TIME/10; i++)
+        {
+          if(!digitalRead(BUTTON_PIN))
+          {
+            *cont = false;
+            break;
+          }
+          delay(10);
+        }
+      } while(!*cont);
+      
+      // Give feedback to the user
+      rgb.setColor(RED);
+      delay(500);
+      rgb.setColor(GREEN);
+  
+      // Arm rocket, turn on launch warnings
+      buzzer->turnOn();
+  
+      for (unsigned int i = 0; i < LAUNCH_COUNTDOWN/10; i++)
+      {
+        // Listen for cancel
+        if (digitalRead(BUTTON_PIN))
+        {
+          *cont = false;
+          rgb.setColor(GREEN);
+          buzzer->turnOff();
+          break;
+        }
+  
+        // Color warning
+        if (i % 50 == 0)
+        {
+          if (i % 100 == 0)
+          {
+            rgb.setColor(GREEN);
+          }
+          else
+          {
+            rgb.setColor(RED);
+          }
+        }
+        
+        delay(10);
+      }
+    } while (!*cont);
+    delete cont;
 
     // Ignite rocket (first stage)
+    digitalWrite(LAUNCH_PIN, HIGH);
+
+    // Buzzer no longer needed, destruct
+    buzzer->turnOff();
+    buzzer->~Buzzer();
   
     #ifdef DEBUG
       writeOut((char*)pgm_read_word(&messages[20]));
@@ -414,7 +469,36 @@ void loop()
   }
   
   // Check to see if it's time to stop the recording
-  
+  static long lastpressed = -SHUTDOWN_TIME;
+  if(digitalRead(BUTTON_PIN))
+  {
+    if(lastpressed + SHUTDOWN_TIME >= millis())
+    {
+      // Shut down
+      #ifdef DEBUG
+        rw_active = false;
+        writeOut((char*)pgm_read_word(&messages[27]));
+        writeOut(String(micros()).c_str());
+        writeOut((char*)pgm_read_word(&messages[28]));
+      #endif
+      
+      logfile->flush();
+      logfile->close();
+      sdfilemanager.close();
+      
+      rgb.turnOff();
+      digitalWrite(LAUNCH_PIN, LOW);
+      exit(0);
+    }
+    else if(lastpressed == -SHUTDOWN_TIME)
+    {
+      lastpressed = millis();
+    }
+  }
+  else
+  {
+    lastpressed = -SHUTDOWN_TIME;
+  }
 }
 
 /**
