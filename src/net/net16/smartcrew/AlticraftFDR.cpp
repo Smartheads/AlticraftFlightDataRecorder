@@ -145,12 +145,14 @@
   const char launch1[] PROGMEM = {"--------------------------------------------\nLIFTOFF_\nIGNITION AT: "};
   const char launch2[] PROGMEM = {" microseconds_\n"};
   const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
-  const char init1[] PROGMEM = {("--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: " + String(__DATE__) + "\nOPERATION MODE: " + String(OPERATION_MODE) + "\n").c_str()};
-  const char trig1[] PROGMEM = {("STAGING TRIGGER MODE: " + String(TRIGGER_MODE) + "\nTRIGGER VALUE: ").c_str()};
+  const char init1[] PROGMEM = {"--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: "};
+  const char trig1[] PROGMEM = {"STAGING TRIGGER MODE: "};
   const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
   const char shutoff1[] PROGMEM = {"--------------------------------------------\nSHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "};
   const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_\n"};
   const char init_servo[] PROGMEM = {"Initializing servo motor...\n"};
+  const char init3[] PROGMEM = {"\nOPERATION MODE: "};
+  const char trig2[] PROGMEM = {"\nTRIGGER VALUE: "};
   
   const char* const messages[] PROGMEM =
   {
@@ -158,14 +160,14 @@
     sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err,
     test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
     launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
-    init_servo
+    init_servo, init3, trig2
   };
   /* END of messages */
 #endif
 
 /* Program variables */
 #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
-  SRL::Buzzer const* buzzer;
+  SRL::Buzzer* buzzer;
 #endif
 #ifdef LAUNCH_LOG_STAGE
   Servo stageservo;
@@ -196,10 +198,17 @@ void setup()
   // Begin initialization. Write out welcome message.
   #ifdef DEBUG
     Serial.begin(BAUD_RATE);
+    Serial.flush();
     writeOut((char*)pgm_read_word(&messages[24]));
+    writeOut(String(__DATE__).c_str());
+    writeOut((char*)pgm_read_word(&messages[30]));
+    writeOut(String(OPERATION_MODE).c_str());
+    writeOut((char*)pgm_read_word(&messages[11]));
     
     #if defined LAUNCH_LOG_STAGE
       writeOut((char*)pgm_read_word(&messages[25]));
+      writeOut(String(TRIGGER_MODE).c_str());
+      writeOut((char*)pgm_read_word(&messages[31]));
       #if defined PRESSURE
         writeOut((String(TRIGGER_PRESSURE) + F(" kPa\n")).c_str());
       #else
@@ -256,11 +265,6 @@ void setup()
   * OK only if sdtest == 15
   */
   byte sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
-  #ifdef DEBUG
-    writeOut((char*)pgm_read_word(&messages[4]));
-    writeOut(sdcard.type());
-    writeOut((char*)pgm_read_word(&messages[11]));
-  #endif
 
   // Initialize volume if card checks out
   if (sdtest)
@@ -270,24 +274,28 @@ void setup()
     #ifdef DEBUG
       if(sdtest == 3)
       {
+        writeOut((char*)pgm_read_word(&messages[4]));
+        writeOut(String(sdcard.type()).c_str());
+        writeOut((char*)pgm_read_word(&messages[11]));
+        
         writeOut((char*)pgm_read_word(&messages[5]));
-        writeOut(sdvolume.clusterCount());
+        writeOut(String(sdvolume.clusterCount()).c_str());
         writeOut((char*)pgm_read_word(&messages[11]));
   
         writeOut((char*)pgm_read_word(&messages[6]));
-        writeOut(sdvolume.blocksPerCluster());
+        writeOut(String(sdvolume.blocksPerCluster()).c_str());
         writeOut((char*)pgm_read_word(&messages[11]));
   
         writeOut((char*)pgm_read_word(&messages[7]));
-        writeOut(sdvolume.blocksPerCluster() * sdvolume.clusterCount());
+        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount()).c_str());
         writeOut((char*)pgm_read_word(&messages[11]));
   
         writeOut((char*)pgm_read_word(&messages[8]));
-        writeOut(sdvolume.fatType());
+        writeOut(String(sdvolume.fatType()).c_str());
         writeOut((char*)pgm_read_word(&messages[11]));
   
         writeOut((char*)pgm_read_word(&messages[9]));
-        writeOut(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2);
+        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2).c_str());
         writeOut((char*)pgm_read_word(&messages[10]));
       }
     #endif
@@ -501,7 +509,6 @@ void loop()
         writeOut((char*)pgm_read_word(&messages[28]));
       #endif
       
-      logfile->flush();
       logfile->close();
       sdfilemanager.close();
       
