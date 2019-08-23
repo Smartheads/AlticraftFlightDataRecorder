@@ -305,13 +305,15 @@ void setup()
 
     if(sdtest == 7)
     {
-      String dirname = __DATE__;
-      while (!sdfilemanager.makeDir(new SdFile(), dirname.c_str()))
+      unsigned int num = 0;
+      const String dir = "FLT";
+      String dirname = dir + String(num);
+      while (!(new SdFile())->makeDir(&sdfilemanager, dirname.c_str()))
       {
-        dirname += "a";
+        dirname = dir + String(++num);
       }
-  
-      sdtest = (sdtest << 1) | sdfilemanager.open(&sdfilemanager, dirname.c_str(), O_RDWR);
+
+      sdtest = (sdtest << 1) | (new SdFile())->open(&sdfilemanager, dirname.c_str(), O_READ);
       rw_active = true;
     }
   }
@@ -339,10 +341,10 @@ void setup()
         writeOut((char*)pgm_read_word(&messages[17]));
         break;
 
-      case 7:
+      case 14:
         writeOut((char*)pgm_read_word(&messages[18]));
         break;
-
+      
       case 15:
         ok = true;
         break;
