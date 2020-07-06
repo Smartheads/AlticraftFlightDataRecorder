@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright (c) 2019 Robert Hutter
+* Copyright (c) 2020 Robert Hutter
 * 
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -120,6 +120,8 @@
 #define DATAHEADER3 "]:\t"
 
 #ifdef DEBUG
+  char outBuffer[190];
+
   /* All other messages */
   const char init2[] PROGMEM = {"--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n"};
   const char buzzer_init[] PROGMEM = {"Initializing buzzer...\n"};
@@ -166,7 +168,7 @@
 #endif
 
 /* Program variables */
-#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
+#if defined(LAUNCH_LOG_STAGE) || defined(ONLY_LAUNCH_AND_LOG)
   SRL::Buzzer* buzzer;
 #endif
 #ifdef LAUNCH_LOG_STAGE
@@ -183,9 +185,13 @@ bool rw_active = false;
 /* END of program variables */
 
 /* Function prototypes */
-void writeOut(char const* message);
-void logData(char const* message, char const* devicename);
-void createNewLogFile(SdFile* logfile);
+void writeOut(char*);
+void logData(char*, char*);
+void createNewLogFile(SdFile*);
+
+#ifdef DEBUG
+  void writeOutDebugMessage(int);
+#endif
 
 /* END of function prototypes */
 
@@ -199,45 +205,45 @@ void setup()
   #ifdef DEBUG
     Serial.begin(BAUD_RATE);
     Serial.flush();
-    writeOut((char*)pgm_read_word(&messages[24]));
+    writeOutDebugMessage(24);
     writeOut(String(__DATE__).c_str());
-    writeOut((char*)pgm_read_word(&messages[30]));
+    writeOutDebugMessage(30);
     writeOut(String(OPERATION_MODE).c_str());
-    writeOut((char*)pgm_read_word(&messages[11]));
+    writeOutDebugMessage(11);
     
-    #if defined LAUNCH_LOG_STAGE
-      writeOut((char*)pgm_read_word(&messages[25]));
+    #ifdef LAUNCH_LOG_STAGE
+      writeOutDebugMessage(25);
       writeOut(String(TRIGGER_MODE).c_str());
-      writeOut((char*)pgm_read_word(&messages[31]));
-      #if defined PRESSURE
+      writeOutDebugMessage(30);
+      #ifdef PRESSURE
         writeOut((String(TRIGGER_PRESSURE) + F(" kPa\n")).c_str());
       #else
-        #if defined ALTITUDE
+        #ifdef ALTITUDE
           writeOut((String(TRIGGER_ALTITUDE) + F(" m\n")).c_str());
         #endif
       #endif
     #endif
 
-    writeOut((char*)pgm_read_word(&messages[0]));
+    writeOutDebugMessage(0);
   #endif
   
   // Initialize sensors
   #ifdef DEBUG
-    writeOut((char*)pgm_read_word(&messages[2]));
+    writeOutDebugMessage(2);
   #endif
   rgb.setColor(BLUE);
   
   // Initialize components needed for launch
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
     #ifdef DEBUG
-      writeOut((char*)pgm_read_word(&messages[1]));
+      writeOutDebugMessage(1);
     #endif
     buzzer = new SRL::Buzzer(BUZZER_PIN);
     buzzer->turnOn();
     delay(100);
     buzzer->turnOff();
     #ifdef DEBUG
-      writeOut((char*)pgm_read_word(&messages[26]));
+      writeOutDebugMessage(26);
     #endif
     pinMode(BUTTON_PIN, INPUT);
     pinMode(LAUNCH_PIN, OUTPUT);
@@ -246,13 +252,13 @@ void setup()
   // Initilize components only needed for staging
   #ifdef LAUNCH_LOG_STAGE
     #ifdef DEBUG
-      writeOut((char*)pgm_read_word(&messages[29]));
+      writeOutDebugMessage(29);
     #endif
     stageservo.attach(SERVO_PIN);
   #endif
 
   #ifdef DEBUG
-    writeOut((char*)pgm_read_word(&messages[3]));
+    writeOutDebugMessage(3);
   #endif
 
   /* byte sdtest
@@ -274,29 +280,29 @@ void setup()
     #ifdef DEBUG
       if(sdtest == 3)
       {
-        writeOut((char*)pgm_read_word(&messages[4]));
+        writeOutDebugMessage(4);
         writeOut(String(sdcard.type()).c_str());
-        writeOut((char*)pgm_read_word(&messages[11]));
+        writeOutDebugMessage(11);
         
-        writeOut((char*)pgm_read_word(&messages[5]));
+        writeOutDebugMessage(5);
         writeOut(String(sdvolume.clusterCount()).c_str());
-        writeOut((char*)pgm_read_word(&messages[11]));
+        writeOutDebugMessage(11);
   
-        writeOut((char*)pgm_read_word(&messages[6]));
+        writeOutDebugMessage(6);
         writeOut(String(sdvolume.blocksPerCluster()).c_str());
-        writeOut((char*)pgm_read_word(&messages[11]));
+        writeOutDebugMessage(11);
   
-        writeOut((char*)pgm_read_word(&messages[7]));
+        writeOutDebugMessage(7);
         writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount()).c_str());
-        writeOut((char*)pgm_read_word(&messages[11]));
+        writeOutDebugMessage(11);
   
-        writeOut((char*)pgm_read_word(&messages[8]));
+        writeOutDebugMessage(8);
         writeOut(String(sdvolume.fatType()).c_str());
-        writeOut((char*)pgm_read_word(&messages[11]));
+        writeOutDebugMessage(11);
   
-        writeOut((char*)pgm_read_word(&messages[9]));
+        writeOutDebugMessage(9);
         writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2).c_str());
-        writeOut((char*)pgm_read_word(&messages[10]));
+        writeOutDebugMessage(10);
       }
     #endif
 
@@ -323,26 +329,26 @@ void setup()
   
   #ifdef DEBUG
     // Debug the error
-    writeOut((char*)pgm_read_word(&messages[12]));
+    writeOutDebugMessage(12);
 
     // Debug sd card
     ok = false;
     switch (sdtest)
     {
       case 0:
-        writeOut((char*)pgm_read_word(&messages[15]));
+        writeOutDebugMessage(15);
         break;
 
       case 1:
-        writeOut((char*)pgm_read_word(&messages[16]));
+        writeOutDebugMessage(16);
         break;
 
       case 3:
-        writeOut((char*)pgm_read_word(&messages[17]));
+        writeOutDebugMessage(17);
         break;
 
       case 14:
-        writeOut((char*)pgm_read_word(&messages[18]));
+        writeOutDebugMessage(18);
         break;
       
       case 15:
@@ -356,11 +362,11 @@ void setup()
     // If not ok, print error to screen
     if (!ok)
     {
-      writeOut((char*)pgm_read_word(&messages[13]));
+      writeOutDebugMessage(13);
     }
     else
     {
-      writeOut((char*)pgm_read_word(&messages[14]));
+      writeOutDebugMessage(14);
     }
 
   #else
@@ -377,9 +383,9 @@ void setup()
   }
   
   // If launch mode enabled, follow launch prcedure
-  #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
+  #if defined(LAUNCH_LOG_STAGE) || defined(ONLY_LAUNCH_AND_LOG)
     #ifdef DEBUG
-      writeOut((char*)pgm_read_word(&messages[19]));
+      writeOutDebugMessage(19);
     #endif
     rgb.setColor(GREEN);
 
@@ -445,20 +451,20 @@ void setup()
 
     // Buzzer no longer needed, destruct
     buzzer->turnOff();
-    buzzer->~Buzzer();
+    delete buzzer;
   
     #ifdef DEBUG
-      writeOut((char*)pgm_read_word(&messages[20]));
+      writeOutDebugMessage(20);
     
       // If all went well, LAUNCH
-      writeOut((char*)pgm_read_word(&messages[21]));
+      writeOutDebugMessage(21);
       writeOut(String(micros()).c_str());
-      writeOut((char*)pgm_read_word(&messages[22]));
+      writeOutDebugMessage(22);
     #endif
   #endif
 
   #ifdef DEBUG
-    writeOut((char*)pgm_read_word(&messages[23]));
+    writeOutDebugMessage(23);
   #endif
   rgb.setColor(RED);
 
@@ -475,11 +481,11 @@ void loop()
   // Take measurements
   
   // If staging mode enabled, compare readings with trigger
-  #if defined LAUNCH_LOG_STAGE
-    #if defined PRESSURE
+  #ifdef LAUNCH_LOG_STAGE
+    #ifdef PRESSURE
     
     #else
-      #if defined ALTITUDE
+      #ifdef ALTITUDE
       
       #endif
     #endif
@@ -506,9 +512,9 @@ void loop()
       // Shut down
       #ifdef DEBUG
         rw_active = false;
-        writeOut((char*)pgm_read_word(&messages[27]));
+        writeOutDebugMessage(27);
         writeOut(String(micros()).c_str());
-        writeOut((char*)pgm_read_word(&messages[28]));
+        writeOutDebugMessage(28);
       #endif
       
       logfile->close();
@@ -533,7 +539,7 @@ void loop()
 * Log data recorded by instruments.
 *
 */
-void logData(char const* message, char const* devicename)
+void logData(char* message, char* devicename)
 {
   writeOut(DATAHEADER1);
   writeOut(String(micros()).c_str());
@@ -549,9 +555,11 @@ void logData(char const* message, char const* devicename)
 *
 * @param message
 */
-void writeOut(char const* message)
+void writeOut(char* message)
 {
-  Serial.print(message);
+  #ifdef DEBUG
+    Serial.print(message);
+  #endif
   
   // Write to SD card
   if (rw_active)
@@ -559,6 +567,19 @@ void writeOut(char const* message)
     logfile->write(message);
   }
 }
+
+#ifdef DEBUG
+  /**
+   * Calls writeOut function with debug message indexed in arg.
+   * 
+   * @param i Index of debug message to print.
+   */
+  void writeOutDebugMessage(int i)
+  {
+    strcpy_P(outBuffer, (char*) pgm_read_word(&messages[i]));
+    writeOut(outBuffer);
+  }
+#endif
 
 /**
 * Creates a new logfile. 
