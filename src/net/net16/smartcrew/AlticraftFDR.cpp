@@ -29,6 +29,8 @@
 #include <SPI.h>
 #include <SD.h>
 #include <avr/pgmspace.h>
+#include <BMP280.h>
+#include <MPU9250.h>
 
 /* BEGINNING OF PROGRAM PREFERENCES */
 
@@ -38,13 +40,19 @@
 #define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
 #define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
 #define BAUD_RATE 115200              // Change baud rate here
+#define ACCEL_X_OFFSET 144              // Change offset value of the x-axis accelerometer
+#define ACCEL_Y_OFFSET 885              // Change offset value of the y-axis accelerometer
+#define ACCEL_Z_OFFSET -345              // Change offset value of the z-axis accelerometer
+#define GYRO_X_OFFSET -402               // Change offset value of x-axis gyroscope.
+#define GYRO_Y_OFFSET 109               // Change offset value of y-axis gyroscope.
+#define GYRO_Z_OFFSET -29               // Change offset value of z-axis gyroscope.
 
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
 
-/*  OPERATION MODES: (use double quotes)
-*     - "PASSIVE_LOG": Only log flight data. Disables launch and staging features.
-*     - "ONLY_LAUNCH_AND_LOG": Enables only launch control and flight data logging.
-*     - "LAUNCH_LOG_STAGE": Enables all features including launch, staging control
+/*  OPERATION MODES:
+*     - PASSIVE_LOG: Only log flight data. Disables launch and staging features.
+*     - ONLY_LAUNCH_AND_LOG: Enables only launch control and flight data logging.
+*     - LAUNCH_LOG_STAGE: Enables all features including launch, staging control
 *         and flight data logging.
 */
 
@@ -52,9 +60,10 @@
 #define TRIGGER_ALTITUDE 200          // Change trigger altitude here
 #define TRIGGER_PRESSURE 100.0        // Change trigger pressure here
 
-/*  STAGE TRIGGER MODES: (use double quotes)
-*     - "ALTITUDE": Activate staging at a specific altitude. (m)
-*     - "PRESSURE": Activate staging at a specific pressure. (kPa)
+/*  STAGE TRIGGER MODES:
+*     - ALTITUDE: Activates staging at a specific altitude. (m)
+*     - PRESSURE: Activates staging at a specific pressure. (kPa)
+*     - APOAPSIS: Activates staging when altitude is at a constant drop.
 */
 
 #define SD_CHIP_SELECT 10             // Change this to match your SD shield or module
@@ -109,21 +118,16 @@
 #define SERVO_PIN 7
 /* END of pins */
 
-/* Device names */
-#define BMP280 F("BMP280")
-#define MPU9250 F("MPU9250")
-/* END of device names */
-
 /* Messages that cant be saved to PROGMEM */
 #define DATAHEADER1 "[+"
 #define DATAHEADER2 "us/"
 #define DATAHEADER3 "]:\t"
 
 #ifdef DEBUG
-  char outBuffer[190];
+  char outBuffer[150];
 
   /* All other messages */
-  const char init2[] PROGMEM = {"--------------------------------------------\nINITIALIZATION PHASE BEGINNING_\n"};
+  const char init2[] PROGMEM = {"INITIALIZATION PHASE BEGINNING_\n"};
   const char buzzer_init[] PROGMEM = {"Initializing buzzer...\n"};
   const char rgb_init[] PROGMEM = {"Initializing RGB LED...\n"};
   const char sd_init[] PROGMEM = {"Initializing SD module...\n"};
@@ -136,7 +140,7 @@
   const char volume_size2[] PROGMEM = {" kb_\n"};
   const char end_line[] PROGMEM = {"_\n"};
   const char test[] PROGMEM = {"INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"};
-  const char test_err[] PROGMEM = {"--------------------------------------------\nAN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
+  const char test_err1[] PROGMEM = {"REVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
   const char test_ok[] PROGMEM = {"TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"};
   const char sd_init_err[] PROGMEM = {"Error initializing SD card...\n"};
   const char volume_init_err[] PROGMEM = {"Error initializing SD volume...\n"};
@@ -147,22 +151,26 @@
   const char launch1[] PROGMEM = {"--------------------------------------------\nLIFTOFF_\nIGNITION AT: "};
   const char launch2[] PROGMEM = {" microseconds_\n"};
   const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
-  const char init1[] PROGMEM = {"--------------------------------------------\nALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: "};
+  const char init1[] PROGMEM = {"ALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: "}; // 24
   const char trig1[] PROGMEM = {"STAGING TRIGGER MODE: "};
   const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
-  const char shutoff1[] PROGMEM = {"--------------------------------------------\nSHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "};
+  const char shutoff1[] PROGMEM = {"SHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "}; // 27
   const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_\n"};
   const char init_servo[] PROGMEM = {"Initializing servo motor...\n"};
   const char init3[] PROGMEM = {"\nOPERATION MODE: "};
   const char trig2[] PROGMEM = {"\nTRIGGER VALUE: "};
+  const char mpu_init[] PROGMEM = {"Initializing MPU9250...\n"};
+  const char bmp_init[] PROGMEM = {"Initializing BMP280...\n"};
+  const char test_err2[] PROGMEM = {"REVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
+  const char divider[] PROGMEM = {"--------------------------------------------\n"}; // 35
   
   const char* const messages[] PROGMEM =
   {
     init2, buzzer_init, rgb_init, sd_init, sd_type1, sd_clusters, sd_blockspersecond,
-    sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err,
+    sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err1,
     test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
     launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
-    init_servo, init3, trig2
+    init_servo, init3, trig2, mpu_init, bmp_init, test_err2, divider
   };
   /* END of messages */
 #endif
@@ -175,6 +183,8 @@
   Servo stageservo;
 #endif
 
+SRL::BMP280 bmp;
+SRL::MPU9250 mpu;
 SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
 Sd2Card sdcard;
 SdVolume sdvolume;
@@ -205,6 +215,7 @@ void setup()
   #ifdef DEBUG
     Serial.begin(BAUD_RATE);
     Serial.flush();
+    writeOutDebugMessage(35);
     writeOutDebugMessage(24);
     writeOut(String(__DATE__).c_str());
     writeOutDebugMessage(30);
@@ -224,6 +235,7 @@ void setup()
       #endif
     #endif
 
+    writeOutDebugMessage(35);
     writeOutDebugMessage(0);
   #endif
   
@@ -232,6 +244,16 @@ void setup()
     writeOutDebugMessage(2);
   #endif
   rgb.setColor(BLUE);
+
+  #ifdef DEBUG
+    writeOutDebugMessage(32);
+  #endif
+  mpu.initialize();
+
+  #ifdef DEBUG
+    writeOutDebugMessage(33);
+  #endif
+  bmp.initialize();
   
   // Initialize components needed for launch
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
@@ -363,6 +385,7 @@ void setup()
     if (!ok)
     {
       writeOutDebugMessage(13);
+      writeOutDebugMessage(34);
     }
     else
     {
@@ -512,6 +535,7 @@ void loop()
       // Shut down
       #ifdef DEBUG
         rw_active = false;
+        writeOutMessage(35);
         writeOutDebugMessage(27);
         writeOut(String(micros()).c_str());
         writeOutDebugMessage(28);

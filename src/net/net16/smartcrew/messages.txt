@@ -10,6 +10,14 @@ RGB INIT:
 
 Initializing RGB LED...\n
 
+MPU9250 INIT:
+
+Initializing MPU9250...\n
+
+BMP280 INIT:
+
+Initializing BMP280...\n
+
 TEST:
 
 INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n
