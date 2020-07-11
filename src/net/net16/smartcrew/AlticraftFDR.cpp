@@ -29,23 +29,27 @@
 #include <SPI.h>
 #include <SD.h>
 #include <avr/pgmspace.h>
-#include <BMP280.h>
-#include <MPU9250.h>
 
 /* BEGINNING OF PROGRAM PREFERENCES */
 
-#define DEBUG ON                      // Comment this line out if you don't want debug
+#define DEBUG ACTIVE                      // Comment this line out if you don't want debug
 #define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between savin into a new file (us)
 #define LAUNCH_ARM_TIME 3000          // Change the launch arm time (ms)
 #define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
 #define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
 #define BAUD_RATE 115200              // Change baud rate here
+#define MPU9260_ADDRESS 0x68          // I2C address of MPU9250
+#define BMP280_ADDRESS 0x76           // I2C address of BMP280
 #define ACCEL_X_OFFSET 144              // Change offset value of the x-axis accelerometer
 #define ACCEL_Y_OFFSET 885              // Change offset value of the y-axis accelerometer
 #define ACCEL_Z_OFFSET -345              // Change offset value of the z-axis accelerometer
 #define GYRO_X_OFFSET -402               // Change offset value of x-axis gyroscope.
 #define GYRO_Y_OFFSET 109               // Change offset value of y-axis gyroscope.
 #define GYRO_Z_OFFSET -29               // Change offset value of z-axis gyroscope.
+#define ACCEL_SENSITIVITY 0             // Change the accelerometer sensitivity
+#define GYRO_SENSITIVITY 0              // Change the gyroscope sensitivity
+#define PRESSURE_OVERSAMPLING 0x01      // Change the pressure oversampling setting
+#define TEMPERATURE_OVERSAMPLING 0x01   // Change the temperature oversampling setting
 
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
 
@@ -124,7 +128,7 @@
 #define DATAHEADER3 "]:\t"
 
 #ifdef DEBUG
-  char outBuffer[150];
+  char outBuffer[135];
 
   /* All other messages */
   const char init2[] PROGMEM = {"INITIALIZATION PHASE BEGINNING_\n"};
@@ -183,8 +187,6 @@
   Servo stageservo;
 #endif
 
-SRL::BMP280 bmp;
-SRL::MPU9250 mpu;
 SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
 Sd2Card sdcard;
 SdVolume sdvolume;
@@ -196,6 +198,7 @@ bool rw_active = false;
 
 /* Function prototypes */
 void writeOut(char*);
+void writeOut(String);
 void logData(char*, char*);
 void createNewLogFile(SdFile*);
 
@@ -217,20 +220,20 @@ void setup()
     Serial.flush();
     writeOutDebugMessage(35);
     writeOutDebugMessage(24);
-    writeOut(String(__DATE__).c_str());
+    writeOut(String(__DATE__));
     writeOutDebugMessage(30);
-    writeOut(String(OPERATION_MODE).c_str());
+    writeOut(String(OPERATION_MODE));
     writeOutDebugMessage(11);
     
     #ifdef LAUNCH_LOG_STAGE
       writeOutDebugMessage(25);
-      writeOut(String(TRIGGER_MODE).c_str());
+      writeOut(String(TRIGGER_MODE));
       writeOutDebugMessage(30);
       #ifdef PRESSURE
-        writeOut((String(TRIGGER_PRESSURE) + F(" kPa\n")).c_str());
+        writeOut(String(TRIGGER_PRESSURE) + F(" kPa\n"));
       #else
         #ifdef ALTITUDE
-          writeOut((String(TRIGGER_ALTITUDE) + F(" m\n")).c_str());
+          writeOut(String(TRIGGER_ALTITUDE) + F(" m\n"));
         #endif
       #endif
     #endif
@@ -248,12 +251,12 @@ void setup()
   #ifdef DEBUG
     writeOutDebugMessage(32);
   #endif
-  mpu.initialize();
+  //mpu.initialize();
 
   #ifdef DEBUG
     writeOutDebugMessage(33);
   #endif
-  bmp.initialize();
+  //bmp.initialize();
   
   // Initialize components needed for launch
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
@@ -284,54 +287,54 @@ void setup()
   #endif
 
   /* byte sdtest
-  * 0000 - four bits
+  * 0000 - last four LSB
   * 000X - SD card init
   * 00X0 - SD volume init
   * 0X00 - create new dir
   * X000 - open workspace dir
   * 
-  * OK only if sdtest == 15
+  * OK only if sdtest == 0x0F (1111)
   */
   byte sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
 
   // Initialize volume if card checks out
-  if (sdtest)
+  if (sdtest == 0x01)
   {
-    sdtest = (sdtest << 1) | sdvolume.init(&sdcard);
+    sdtest = (((byte)sdvolume.init(&sdcard)) << 1) | sdtest;
 
     #ifdef DEBUG
-      if(sdtest == 3)
+      if(sdtest == 0x03) // Print information on sdvolume
       {
         writeOutDebugMessage(4);
-        writeOut(String(sdcard.type()).c_str());
+        writeOut(String(sdcard.type()));
         writeOutDebugMessage(11);
         
         writeOutDebugMessage(5);
-        writeOut(String(sdvolume.clusterCount()).c_str());
+        writeOut(String(sdvolume.clusterCount()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(6);
-        writeOut(String(sdvolume.blocksPerCluster()).c_str());
+        writeOut(String(sdvolume.blocksPerCluster()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(7);
-        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount()).c_str());
+        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(8);
-        writeOut(String(sdvolume.fatType()).c_str());
+        writeOut(String(sdvolume.fatType()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(9);
-        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2).c_str());
+        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2));
         writeOutDebugMessage(10);
       }
     #endif
 
     // Create a new directory to log data into and open it
-    sdtest = (sdtest << 1) | sdfilemanager.openRoot(&sdvolume);
+    sdtest = (((byte)sdfilemanager.openRoot(&sdvolume)) << 2) | sdtest;
 
-    if(sdtest == 7)
+    if(sdtest == 0x07) // 0111
     {
       unsigned int num = 0;
       const String dir = "FLT";
@@ -341,7 +344,7 @@ void setup()
         dirname = dir + String(++num);
       }
 
-      sdtest = (sdtest << 1) | (new SdFile())->open(&sdfilemanager, dirname.c_str(), O_READ);
+      sdtest = (((byte)(new SdFile())->open(&sdfilemanager, dirname.c_str(), O_READ)) << 3) | sdtest;
       rw_active = true;
     }
   }
@@ -351,29 +354,29 @@ void setup()
   
   #ifdef DEBUG
     // Debug the error
-    writeOutDebugMessage(12);
+    writeOutDebugMessage(12); // Testing phase beginning
 
     // Debug sd card
     ok = false;
     switch (sdtest)
     {
-      case 0:
+      case 0x00:
         writeOutDebugMessage(15);
         break;
 
-      case 1:
+      case 0x01:
         writeOutDebugMessage(16);
         break;
 
-      case 3:
+      case 0x03:
         writeOutDebugMessage(17);
         break;
 
-      case 14:
+      case 0x0E:
         writeOutDebugMessage(18);
         break;
       
-      case 15:
+      case 0x0F:
         ok = true;
         break;
 
@@ -394,7 +397,7 @@ void setup()
 
   #else
     // True if any component fails
-    ok = (sdtest == 15);
+    ok = (sdtest == 0x0F);
   #endif
 
   if (!ok)
@@ -481,7 +484,7 @@ void setup()
     
       // If all went well, LAUNCH
       writeOutDebugMessage(21);
-      writeOut(String(micros()).c_str());
+      writeOut(String(micros()));
       writeOutDebugMessage(22);
     #endif
   #endif
@@ -535,9 +538,9 @@ void loop()
       // Shut down
       #ifdef DEBUG
         rw_active = false;
-        writeOutMessage(35);
+        writeOutDebugMessage(35);
         writeOutDebugMessage(27);
-        writeOut(String(micros()).c_str());
+        writeOut(String(micros()));
         writeOutDebugMessage(28);
       #endif
       
@@ -566,7 +569,7 @@ void loop()
 void logData(char* message, char* devicename)
 {
   writeOut(DATAHEADER1);
-  writeOut(String(micros()).c_str());
+  writeOut(String(micros()));
   writeOut(DATAHEADER2);
   writeOut(devicename);
   writeOut(DATAHEADER3);
@@ -590,6 +593,15 @@ void writeOut(char* message)
   {
     logfile->write(message);
   }
+}
+
+/**
+ * Overloaded function of writeOut with
+ * @param message String object
+ */
+void writeOut(String message)
+{
+  writeOut((char*)message.c_str());
 }
 
 #ifdef DEBUG
