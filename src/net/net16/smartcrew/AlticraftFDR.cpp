@@ -28,6 +28,7 @@
 #include <RGBLED.h>
 #include <SPI.h>
 #include <SD.h>
+#include <I2C.h>
 #include <avr/pgmspace.h>
 
 /* BEGINNING OF PROGRAM PREFERENCES */
@@ -35,10 +36,11 @@
 #define DEBUG ACTIVE                      // Comment this line out if you don't want debug
 #define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between savin into a new file (us)
 #define LAUNCH_ARM_TIME 3000          // Change the launch arm time (ms)
+#define LAUNCH_TIMEOUT 2000           // Time between launch sequence activated and countdown begins (ms)
 #define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
 #define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
 #define BAUD_RATE 115200              // Change baud rate here
-#define MPU9260_ADDRESS 0x68          // I2C address of MPU9250
+#define MPU9250_ADDRESS 0x68          // I2C address of MPU9250
 #define BMP280_ADDRESS 0x76           // I2C address of BMP280
 #define ACCEL_X_OFFSET 144              // Change offset value of the x-axis accelerometer
 #define ACCEL_Y_OFFSET 885              // Change offset value of the y-axis accelerometer
@@ -48,8 +50,23 @@
 #define GYRO_Z_OFFSET -29               // Change offset value of z-axis gyroscope.
 #define ACCEL_SENSITIVITY 0             // Change the accelerometer sensitivity
 #define GYRO_SENSITIVITY 0              // Change the gyroscope sensitivity
-#define PRESSURE_OVERSAMPLING 0x01      // Change the pressure oversampling setting
-#define TEMPERATURE_OVERSAMPLING 0x01   // Change the temperature oversampling setting
+#define PRESSURE_OVERSAMPLING 3      // Change the pressure oversampling setting
+#define TEMPERATURE_OVERSAMPLING 1   // Change the temperature oversampling setting
+#define BMP280_POWER_MODE 3          // BMP280 power mode (3 = normal mode)
+
+// BMP280 Calibration Data
+#define BMP280_DIG_T1 0
+#define BMP280_DIG_T2 0
+#define BMP280_DIG_T3 0
+#define BMP280_DIG_P1 0
+#define BMP280_DIG_P2 0
+#define BMP280_DIG_P3 0
+#define BMP280_DIG_P4 0
+#define BMP280_DIG_P5 0
+#define BMP280_DIG_P6 0
+#define BMP280_DIG_P7 0
+#define BMP280_DIG_P8 0
+#define BMP280_DIG_P9 0
 
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
 
@@ -122,6 +139,20 @@
 #define SERVO_PIN 7
 /* END of pins */
 
+/* Register addresses */
+#define BMP280_CTRL_MEAS 0xF4   // Oversampling, power mode
+#define BMP280_PRESS 0xF7       // Start of burst read
+#define BMP280_CHIP_ID 0xD0
+
+#define MPU9250_GYRO_CONFIG 0x1B
+#define MPU9250_ACCEL_CONFIG 0x1C
+#define MPU9250_WHO_AM_I 0x75
+/* END of register addresses */
+
+#define BMP280_CHIP_ID_VALUE 0x58
+#define MPU9250_WHO_AM_I_VALUE 0x71
+#define WORKSPACE_DIR_NAME "FLT"
+
 /* Messages that cant be saved to PROGMEM */
 #define DATAHEADER1 "[+"
 #define DATAHEADER2 "us/"
@@ -144,12 +175,12 @@
   const char volume_size2[] PROGMEM = {" kb_\n"};
   const char end_line[] PROGMEM = {"_\n"};
   const char test[] PROGMEM = {"INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"};
-  const char test_err1[] PROGMEM = {"REVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
-  const char test_ok[] PROGMEM = {"TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"};
+  const char test_err1[] PROGMEM = {"AN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_"};
+  const char test_ok[] PROGMEM = {"TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"}; // 14
   const char sd_init_err[] PROGMEM = {"Error initializing SD card...\n"};
   const char volume_init_err[] PROGMEM = {"Error initializing SD volume...\n"};
   const char mk_worksp_err[] PROGMEM = {"Error creating workspace...\n"};
-  const char op_worksp_err[] PROGMEM = {"Error opening workspace...\n"};
+  const char op_worksp_err[] PROGMEM = {"Error opening workspace...\n"}; // 18
   const char wait[] PROGMEM = {"ARMING IGNITION SYSTEM_\n--------------------------------------------\nWAITING FOR LAUNCH SIGNAL_\n"};
   const char warn[] PROGMEM = {"LAUNCH SIGNAL RECIVED_\n--------------------------------------------\nWARNING! IGNITION IN 10 SECONDS_\nPRESS ANY BUTTON TO CANCEL_\n"};
   const char launch1[] PROGMEM = {"--------------------------------------------\nLIFTOFF_\nIGNITION AT: "};
@@ -165,8 +196,12 @@
   const char trig2[] PROGMEM = {"\nTRIGGER VALUE: "};
   const char mpu_init[] PROGMEM = {"Initializing MPU9250...\n"};
   const char bmp_init[] PROGMEM = {"Initializing BMP280...\n"};
-  const char test_err2[] PROGMEM = {"REVIEW LOG FOR MORE INFORMATION_\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
+  const char test_err2[] PROGMEM = {"\nABORTING SETUP_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
   const char divider[] PROGMEM = {"--------------------------------------------\n"}; // 35
+  const char bmp_test_err[] PROGMEM = {"Error reading BMP280 chip id...\n"};
+  const char sd_err_o_ws[] PROGMEM = {"Error opening workspace..."};
+  const char mpu_test_err[] PROGMEM = {"Error reading MPU9250 device id...\n"}; // 38
+  const char user_abort[] PROGMEM = {"USER ABORTED LAUNCH_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
   
   const char* const messages[] PROGMEM =
   {
@@ -174,7 +209,8 @@
     sd_totalblocks, volume_type, volume_size1, volume_size2, end_line, test, test_err1,
     test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
     launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
-    init_servo, init3, trig2, mpu_init, bmp_init, test_err2, divider
+    init_servo, init3, trig2, mpu_init, bmp_init, test_err2, divider, bmp_test_err,
+    sd_err_o_ws, mpu_test_err, user_abort
   };
   /* END of messages */
 #endif
@@ -187,6 +223,8 @@
   Servo stageservo;
 #endif
 
+SRL::I2CDevice bmp(BMP280_ADDRESS);
+SRL::I2CDevice mpu(MPU9250_ADDRESS);
 SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
 Sd2Card sdcard;
 SdVolume sdvolume;
@@ -240,6 +278,7 @@ void setup()
 
     writeOutDebugMessage(35);
     writeOutDebugMessage(0);
+    Serial.flush();
   #endif
   
   // Initialize sensors
@@ -248,15 +287,32 @@ void setup()
   #endif
   rgb.setColor(BLUE);
 
+  // Initialize MPU9250
   #ifdef DEBUG
     writeOutDebugMessage(32);
   #endif
-  //mpu.initialize();
+  { // Local scope for gc and ac
+    uint8_t gc = 0;
+    mpu.readBytes(MPU9250_GYRO_CONFIG, &gc, 1);
+    gc = ((uint8_t)0xE7) & gc; // 11100111 mask
+    gc = gc | ((uint8_t)GYRO_SENSITIVITY);
+    mpu.writeByte(MPU9250_GYRO_CONFIG, gc);
+    
+    uint8_t ac = 0;
+    mpu.readBytes(MPU9250_ACCEL_CONFIG, &ac, 1);
+    ac = ((uint8_t)0xE7) & ac; // 11100111 mask
+    ac = ac | ((uint8_t)ACCEL_SENSITIVITY);
+    mpu.writeByte(MPU9250_ACCEL_CONFIG, ac);
+  }
 
+  // Initialize BMP280
   #ifdef DEBUG
     writeOutDebugMessage(33);
   #endif
-  //bmp.initialize();
+  { // Local scope for bmpSetting
+    uint8_t bmpSetting = (((uint8_t)TEMPERATURE_OVERSAMPLING) << 5) | (((uint8_t)PRESSURE_OVERSAMPLING) << 2) | ((uint8_t)BMP280_POWER_MODE);
+    bmp.writeByte(BMP280_CTRL_MEAS, bmpSetting);
+  }
   
   // Initialize components needed for launch
   #if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
@@ -286,7 +342,7 @@ void setup()
     writeOutDebugMessage(3);
   #endif
 
-  /* byte sdtest
+  /* uint8_t sdtest
   * 0000 - last four LSB
   * 000X - SD card init
   * 00X0 - SD volume init
@@ -295,12 +351,12 @@ void setup()
   * 
   * OK only if sdtest == 0x0F (1111)
   */
-  byte sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
+  uint8_t sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
 
   // Initialize volume if card checks out
   if (sdtest == 0x01)
   {
-    sdtest = (((byte)sdvolume.init(&sdcard)) << 1) | sdtest;
+    sdtest = (((uint8_t)sdvolume.init(&sdcard)) << 1) | sdtest;
 
     #ifdef DEBUG
       if(sdtest == 0x03) // Print information on sdvolume
@@ -332,32 +388,38 @@ void setup()
     #endif
 
     // Create a new directory to log data into and open it
-    sdtest = (((byte)sdfilemanager.openRoot(&sdvolume)) << 2) | sdtest;
+    sdtest = (((uint8_t)sdfilemanager.openRoot(&sdvolume)) << 2) | sdtest;
 
     if(sdtest == 0x07) // 0111
     {
-      unsigned int num = 0;
-      const String dir = "FLT";
+      uint8_t num = 0;
+      const String dir = WORKSPACE_DIR_NAME;
       String dirname = dir + String(num);
-      while (!(new SdFile())->makeDir(&sdfilemanager, dirname.c_str()))
+      bool success = false;
+      while (!success)
       {
-        dirname = dir + String(++num);
+        SdFile sdf;
+        success = sdf.makeDir(&sdfilemanager, dirname.c_str());
+        if (!success)
+        {
+          dirname = dir + String(++num); // Issue somewhere here
+        }
       }
 
-      sdtest = (((byte)(new SdFile())->open(&sdfilemanager, dirname.c_str(), O_READ)) << 3) | sdtest;
+      SdFile sdf;
+      sdtest = ((uint8_t)(sdf.open(&sdfilemanager, dirname.c_str(), O_READ)) << 3) | sdtest;
       rw_active = true;
     }
   }
   
-  // Test all components, report if there is an error.
-  bool ok = true;
-  
+  /* Testing phase begins here */
+
+  // Debug potenital SD card error (testing already happened)
   #ifdef DEBUG
-    // Debug the error
     writeOutDebugMessage(12); // Testing phase beginning
+    Serial.flush();
 
     // Debug sd card
-    ok = false;
     switch (sdtest)
     {
       case 0x00:
@@ -372,41 +434,60 @@ void setup()
         writeOutDebugMessage(17);
         break;
 
+      case 0x07:
+        writeOutDebugMessage(37);
+      break;
+
       case 0x0E:
         writeOutDebugMessage(18);
         break;
-      
-      case 0x0F:
-        ok = true;
-        break;
-
+        
       default:
         break;
     }
-
-    // If not ok, print error to screen
-    if (!ok)
-    {
-      writeOutDebugMessage(13);
-      writeOutDebugMessage(34);
-    }
-    else
-    {
-      writeOutDebugMessage(14);
-    }
-
-  #else
-    // True if any component fails
-    ok = (sdtest == 0x0F);
   #endif
 
-  if (!ok)
+  // Test MPU9250, read device ID
+  uint8_t mpuChipId = 0;
+  mpu.readBytes(MPU9250_WHO_AM_I, &mpuChipId, 1);
+
+  #ifdef DEBUG
+    if (mpuChipId != MPU9250_WHO_AM_I_VALUE)
+    {
+      writeOutDebugMessage(38); // Error with MPU9250
+    }
+  #endif
+
+  // Test BMP280, read device ID
+  uint8_t bmpChipId = 0;
+  bmp.readBytes(BMP280_CHIP_ID, &bmpChipId, 1);
+
+  #ifdef DEBUG
+    if (bmpChipId != BMP280_CHIP_ID_VALUE)
+    {
+      writeOutDebugMessage(36); // Error with BMP280
+    }
+  #endif
+  
+  // Check if any component failed
+  if (sdtest != 0x0F || bmpChipId != BMP280_CHIP_ID_VALUE || mpuChipId != MPU9250_WHO_AM_I_VALUE)
   {
+    #ifdef DEBUG
+      writeOutDebugMessage(35); // Divider
+      writeOutDebugMessage(13); // Testing has failed
+      writeOutDebugMessage(34);
+    #endif 
+    
     rgb.setColor(WHITE);
       
     // Wait forever (until the user reboots the system)
+    sdfilemanager.sync();
     for(;;){}
   }
+
+  #ifdef DEBUG
+    writeOutDebugMessage(14);
+  #endif
   
   // If launch mode enabled, follow launch prcedure
   #if defined(LAUNCH_LOG_STAGE) || defined(ONLY_LAUNCH_AND_LOG)
@@ -415,62 +496,77 @@ void setup()
     #endif
     rgb.setColor(GREEN);
 
-    bool* cont;
-    cont = new bool(true);
+    bool cont = true;
+    
+    // Wait for ignition sequence to be started.
     do
-    { 
-      // Wait for ignition sequence to be started.
-      do
-      {
-        while(!digitalRead(BUTTON_PIN));
-        
-        for(unsigned int i = 0; i < LAUNCH_ARM_TIME/10; i++)
-        {
-          if(!digitalRead(BUTTON_PIN))
-          {
-            *cont = false;
-            break;
-          }
-          delay(10);
-        }
-      } while(!*cont);
+    {
+      while(digitalRead(BUTTON_PIN) == LOW);
+      cont = true;
       
-      // Give feedback to the user
-      rgb.setColor(RED);
-      delay(500);
-      rgb.setColor(GREEN);
-  
-      // Arm rocket, turn on launch warnings
-      buzzer->turnOn();
-  
-      for (unsigned int i = 0; i < LAUNCH_COUNTDOWN/10; i++)
+      for(uint16_t i = 0; i < LAUNCH_ARM_TIME/10; i++)
       {
-        // Listen for cancel
-        if (digitalRead(BUTTON_PIN))
+        if(digitalRead(BUTTON_PIN) == LOW)
         {
-          *cont = false;
-          rgb.setColor(GREEN);
-          buzzer->turnOff();
+          cont = false;
           break;
         }
-  
-        // Color warning
-        if (i % 50 == 0)
-        {
-          if (i % 100 == 0)
-          {
-            rgb.setColor(GREEN);
-          }
-          else
-          {
-            rgb.setColor(RED);
-          }
-        }
-        
         delay(10);
       }
-    } while (!*cont);
-    delete cont;
+    } while(!cont);
+    
+    // Give feedback to the user (also gives time to release button)
+    rgb.setColor(RED);
+    delay(LAUNCH_TIMEOUT);
+    rgb.setColor(GREEN);
+
+    // Arm rocket, turn on launch warnings
+    buzzer->turnOn();
+
+    #ifdef DEBUG
+      writeOutDebugMessage(20); // Launch signal recieved
+    #endif
+
+    // Continue with launch sequence
+    for (uint16_t i = 0; i < LAUNCH_COUNTDOWN/10; i++)
+    {
+      // Listen for abort
+      if (digitalRead(BUTTON_PIN) == HIGH)
+      {
+        cont = false;
+        rgb.setColor(GREEN);
+        buzzer->turnOff();
+        break;
+      }
+
+      // Color warning
+      if (i % 50 == 0)
+      {
+        if (i % 100 == 0)
+        {
+          rgb.setColor(GREEN);
+        }
+        else
+        {
+          rgb.setColor(RED);
+        }
+      }
+      
+      delay(10);
+    }
+
+    if (!cont) // Check if user aborted
+    {
+        #ifdef DEBUG
+          writeOutDebugMessage(35); // Divider
+          writeOutDebugMessage(39); // User abort
+        #endif
+
+        rgb.setColor(WHITE);
+        
+        sdfilemanager.sync();
+        for(;;) {} // Wait until reset
+    }
 
     // Ignite rocket (first stage)
     digitalWrite(LAUNCH_PIN, HIGH);
@@ -480,8 +576,6 @@ void setup()
     delete buzzer;
   
     #ifdef DEBUG
-      writeOutDebugMessage(20);
-    
       // If all went well, LAUNCH
       writeOutDebugMessage(21);
       writeOut(String(micros()));
@@ -493,6 +587,8 @@ void setup()
     writeOutDebugMessage(23);
   #endif
   rgb.setColor(RED);
+
+  for(;;){} // TEMPORARY!!
 
   logfile = new SdFile();
   createNewLogFile(logfile);
