@@ -32,42 +32,50 @@
 #include <avr/pgmspace.h>
 
 /* BEGINNING OF PROGRAM PREFERENCES */
-
+// Debug
 #define DEBUG ACTIVE                      // Comment this line out if you don't want debug
-#define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between savin into a new file (us)
-#define LAUNCH_ARM_TIME 3000          // Change the launch arm time (ms)
-#define LAUNCH_TIMEOUT 2000           // Time between launch sequence activated and countdown begins (ms)
-#define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
-#define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
 #define BAUD_RATE 115200              // Change baud rate here
-#define MPU9250_ADDRESS 0x68          // I2C address of MPU9250
-#define BMP280_ADDRESS 0x76           // I2C address of BMP280
-#define ACCEL_X_OFFSET 144              // Change offset value of the x-axis accelerometer
-#define ACCEL_Y_OFFSET 885              // Change offset value of the y-axis accelerometer
-#define ACCEL_Z_OFFSET -345              // Change offset value of the z-axis accelerometer
-#define GYRO_X_OFFSET -402               // Change offset value of x-axis gyroscope.
-#define GYRO_Y_OFFSET 109               // Change offset value of y-axis gyroscope.
-#define GYRO_Z_OFFSET -29               // Change offset value of z-axis gyroscope.
+
+// Measurement preferences
+#define BASE_PRESSURE 100325        // Base pressure to use for altitude calculation
+#define MEASUREMENT_RATE 20         // Measurement rate: set the timeout between measurements (Hz).
 #define ACCEL_SENSITIVITY 0             // Change the accelerometer sensitivity
 #define GYRO_SENSITIVITY 0              // Change the gyroscope sensitivity
 #define PRESSURE_OVERSAMPLING 3      // Change the pressure oversampling setting
 #define TEMPERATURE_OVERSAMPLING 1   // Change the temperature oversampling setting
+
+// Calibration data
+#define ACCEL_X_OFFSET 144 
+#define ACCEL_Y_OFFSET 885 
+#define ACCEL_Z_OFFSET -345              
+#define GYRO_X_OFFSET -402               
+#define GYRO_Y_OFFSET 109            
+#define GYRO_Z_OFFSET -29              
+#define BMP280_DIG_T1 27317
+#define BMP280_DIG_T2 25771
+#define BMP280_DIG_T3 50
+#define BMP280_DIG_P1 38529
+#define BMP280_DIG_P2 -10512
+#define BMP280_DIG_P3 3024
+#define BMP280_DIG_P4 6002
+#define BMP280_DIG_P5 -132
+#define BMP280_DIG_P6 -7
+#define BMP280_DIG_P7 15500
+#define BMP280_DIG_P8 -14600
+#define BMP280_DIG_P9 6000
+
+// Timing
+#define LAUNCH_ARM_TIME 3000          // Change the launch arm time (ms)
+#define LAUNCH_TIMEOUT 2000           // Time between launch sequence activated and countdown begins (ms)
+#define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
+#define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between saving into a new file (us)
+#define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
+
+// Advanced
 #define BMP280_POWER_MODE 3          // BMP280 power mode (3 = normal mode)
+#define EXPECTED_FILE_SIZE 17408    // Expected size of log files (b)
 
-// BMP280 Calibration Data
-#define BMP280_DIG_T1 0
-#define BMP280_DIG_T2 0
-#define BMP280_DIG_T3 0
-#define BMP280_DIG_P1 0
-#define BMP280_DIG_P2 0
-#define BMP280_DIG_P3 0
-#define BMP280_DIG_P4 0
-#define BMP280_DIG_P5 0
-#define BMP280_DIG_P6 0
-#define BMP280_DIG_P7 0
-#define BMP280_DIG_P8 0
-#define BMP280_DIG_P9 0
-
+/* SELECT OPERATIONAL MODE */
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
 
 /*  OPERATION MODES:
@@ -77,6 +85,7 @@
 *         and flight data logging.
 */
 
+/* SELECT STAGE TRIGGER IF REQUIRED */
 #define ALTITUDE ACTIVE               // Change trigger mode here
 #define TRIGGER_ALTITUDE 200          // Change trigger altitude here
 #define TRIGGER_PRESSURE 100.0        // Change trigger pressure here
@@ -84,6 +93,7 @@
 /*  STAGE TRIGGER MODES:
 *     - ALTITUDE: Activates staging at a specific altitude. (m)
 *     - PRESSURE: Activates staging at a specific pressure. (kPa)
+*     - TEMPERATURE: Activates staging at a specific temperature. (deg C)
 *     - APOAPSIS: Activates staging when altitude is at a constant drop.
 */
 
@@ -98,17 +108,32 @@
 
 /* END OF PREFERENCES*/
 
-#if defined LAUNCH_LOG_STAGE || defined ONLY_LAUNCH_AND_LOG
-  #include <Buzzer.h>
-#endif
-#ifdef LAUNCH_LOG_STAGE
-  #include <Servo.h>
-#endif
-
 /* 
 * Preprocessing settings
 *
 */
+#if ACCEL_SENSITIVITY == 0
+  #define ACCEL_SCALE_FACTOR 16384.0f
+#elif ACCEL_SENSITIVITY == 1
+  #define ACCEL_SCALE_FACTOR 8192.0f
+#elif ACCEL_SENSITIVITY == 2
+  #define ACCEL_SCALE_FACTOR 4096.0f
+#elif ACCEL_SENSITIVITY == 3
+  #define ACCEL_SCALE_FACTOR 2048.0f
+#endif
+
+#if GYRO_SENSITIVITY == 0
+  #define GYRO_SCALE_FACTOR 131.0f
+#elif GYRO_SENSITIVITY = 1
+  #define GYRO_SCALE_FACTOR 65.5f
+#elif GYRO_SENSITIVITY = 2
+  #define GYRO_SCALE_FACTOR 32.8f
+#elif GYRO_SENSITIVITY = 3
+  #define GYRO_SCALE_FACTOR 16.4f
+#endif
+
+#define MEASUREMENT_INTERVAL (1000 / MEASUREMENT_RATE)
+
 #if defined PASSIVE_LOG
   #define OPERATION_MODE "PASSIVE_LOG"
 #endif
@@ -140,6 +165,9 @@
 /* END of pins */
 
 /* Register addresses */
+#define MPU9250_ADDRESS 0x68          // I2C address of MPU9250
+#define BMP280_ADDRESS 0x76           // I2C address of BMP280
+
 #define BMP280_CTRL_MEAS 0xF4   // Oversampling, power mode
 #define BMP280_PRESS 0xF7       // Start of burst read
 #define BMP280_CHIP_ID 0xD0
@@ -147,16 +175,13 @@
 #define MPU9250_GYRO_CONFIG 0x1B
 #define MPU9250_ACCEL_CONFIG 0x1C
 #define MPU9250_WHO_AM_I 0x75
+#define MPU9250_ACCEL_DATA 0x3B
 /* END of register addresses */
 
 #define BMP280_CHIP_ID_VALUE 0x58
 #define MPU9250_WHO_AM_I_VALUE 0x71
 #define WORKSPACE_DIR_NAME "FLT"
-
-/* Messages that cant be saved to PROGMEM */
-#define DATAHEADER1 "[+"
-#define DATAHEADER2 "us/"
-#define DATAHEADER3 "]:\t"
+#define LOG_FILE_HEADER F("timestamp,pressure,altitude,temp,accelX,accelY,accelZ,GyroX,GyroY,GyroZ\n")
 
 #ifdef DEBUG
   char outBuffer[135];
@@ -217,9 +242,11 @@
 
 /* Program variables */
 #if defined(LAUNCH_LOG_STAGE) || defined(ONLY_LAUNCH_AND_LOG)
+  #include <Buzzer.h>
   SRL::Buzzer* buzzer;
 #endif
 #ifdef LAUNCH_LOG_STAGE
+  #include <Servo.h>
   Servo stageservo;
 #endif
 
@@ -229,19 +256,17 @@ SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
 Sd2Card sdcard;
 SdVolume sdvolume;
 SdFile* logfile;
+SdFile debugFile;
 SdFile sdfilemanager;
-
-bool rw_active = false;
 /* END of program variables */
 
 /* Function prototypes */
-void writeOut(char*);
-void writeOut(String);
-void logData(char*, char*);
+void logData(int32_t, float, int32_t, float, float, float, float, float, float);
 void createNewLogFile(SdFile*);
 
 #ifdef DEBUG
   void writeOutDebugMessage(int);
+  void writeOutDebugMessage(String);
 #endif
 
 /* END of function prototypes */
@@ -258,20 +283,20 @@ void setup()
     Serial.flush();
     writeOutDebugMessage(35);
     writeOutDebugMessage(24);
-    writeOut(String(__DATE__));
+    writeOutDebugMessage(String(__DATE__));
     writeOutDebugMessage(30);
-    writeOut(String(OPERATION_MODE));
+    writeOutDebugMessage(String(OPERATION_MODE));
     writeOutDebugMessage(11);
     
     #ifdef LAUNCH_LOG_STAGE
       writeOutDebugMessage(25);
-      writeOut(String(TRIGGER_MODE));
+      writeOutDebugMessage(String(TRIGGER_MODE));
       writeOutDebugMessage(30);
       #ifdef PRESSURE
-        writeOut(String(TRIGGER_PRESSURE) + F(" kPa\n"));
+        writeOutDebugMessage(String(TRIGGER_PRESSURE) + F(" kPa\n"));
       #else
         #ifdef ALTITUDE
-          writeOut(String(TRIGGER_ALTITUDE) + F(" m\n"));
+          writeOutDebugMessage(String(TRIGGER_ALTITUDE) + F(" m\n"));
         #endif
       #endif
     #endif
@@ -362,27 +387,27 @@ void setup()
       if(sdtest == 0x03) // Print information on sdvolume
       {
         writeOutDebugMessage(4);
-        writeOut(String(sdcard.type()));
+        writeOutDebugMessage(String(sdcard.type()));
         writeOutDebugMessage(11);
         
         writeOutDebugMessage(5);
-        writeOut(String(sdvolume.clusterCount()));
+        writeOutDebugMessage(String(sdvolume.clusterCount()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(6);
-        writeOut(String(sdvolume.blocksPerCluster()));
+        writeOutDebugMessage(String(sdvolume.blocksPerCluster()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(7);
-        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount()));
+        writeOutDebugMessage(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(8);
-        writeOut(String(sdvolume.fatType()));
+        writeOutDebugMessage(String(sdvolume.fatType()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(9);
-        writeOut(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2));
+        writeOutDebugMessage(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2));
         writeOutDebugMessage(10);
       }
     #endif
@@ -408,7 +433,7 @@ void setup()
 
       SdFile sdf;
       sdtest = ((uint8_t)(sdf.open(&sdfilemanager, dirname.c_str(), O_READ)) << 3) | sdtest;
-      rw_active = true;
+      sdfilemanager = sdf;
     }
   }
   
@@ -481,7 +506,7 @@ void setup()
     rgb.setColor(WHITE);
       
     // Wait forever (until the user reboots the system)
-    sdfilemanager.sync();
+    sdfilemanager.close();
     for(;;){}
   }
 
@@ -564,7 +589,7 @@ void setup()
 
         rgb.setColor(WHITE);
         
-        sdfilemanager.sync();
+        sdfilemanager.close();
         for(;;) {} // Wait until reset
     }
 
@@ -574,11 +599,15 @@ void setup()
     // Buzzer no longer needed, destruct
     buzzer->turnOff();
     delete buzzer;
+
+    #ifdef DEBUG
+    debugFile.createContiguous(sdfilemanager, "debug.txt", 1);
+    #endif
   
     #ifdef DEBUG
       // If all went well, LAUNCH
       writeOutDebugMessage(21);
-      writeOut(String(micros()));
+      writeOutDebugMessage(String(micros()));
       writeOutDebugMessage(22);
     #endif
   #endif
@@ -588,10 +617,11 @@ void setup()
   #endif
   rgb.setColor(RED);
 
-  for(;;){} // TEMPORARY!!
-
+  // Create log and debug files
   logfile = new SdFile();
   createNewLogFile(logfile);
+  logfile->write(String(LOG_FILE_HEADER).c_str());
+  logfile->sync();
 }
 
 /**
@@ -601,60 +631,138 @@ void setup()
 void loop()
 {
   // Take measurements
+  int32_t pressure, temperature;
+  float ax, ay, az, gx, gy, gz, altitude;
+  { // BMP280
+    uint8_t bmpBuffer[6] = { 0 };
+    bmp.readBytes(BMP280_PRESS, bmpBuffer, 6);
+    
+    int32_t adc_P = (int32_t) ((((uint32_t) (bmpBuffer[0])) << 12) | (((uint32_t) (bmpBuffer[1])) << 4) | ((uint32_t) bmpBuffer[2] >> 4));
+    int32_t adc_T = (int32_t) ((((int32_t) (bmpBuffer[3])) << 12) | (((int32_t) (bmpBuffer[4])) << 4) | (((int32_t) (bmpBuffer[5])) >> 4));
+  
+    {
+      // Calculate compensated temperature. From BMP280_driver @BoschSensortech
+      int32_t var1, var2;
+      var1 = ((((adc_T / 8) - ((int32_t) BMP280_DIG_T1 << 1))) * ((int32_t) BMP280_DIG_T2)) / 2048;
+      var2 = (((((adc_T / 16) - ((int32_t) BMP280_DIG_T1)) * ((adc_T / 16) - ((int32_t) BMP280_DIG_T1))) / 4096) * ((int32_t) BMP280_DIG_T3)) / 16384;
+      int32_t t_fine = var1 + var2;
+      temperature = (t_fine * 5 + 128) / 256;
+      
+      // Calculate compensated pressure. From BMP280_driver @BoschSensortech
+      var1 = (((int32_t) t_fine) / 2) - (int32_t) 64000;
+      var2 = (((var1 / 4) * (var1 / 4)) / 2048) * ((int32_t) BMP280_DIG_P6);
+      var2 = var2 + ((var1 * ((int32_t) BMP280_DIG_P5)) * 2);
+      var2 = (var2 / 4) + (((int32_t) BMP280_DIG_P4) * 65536);
+      var1 =
+          (((BMP280_DIG_P3 * (((var1 / 4) * (var1 / 4)) / 8192)) / 8) +
+           ((((int32_t) BMP280_DIG_P2) * var1) / 2)) / 262144;
+      var1 = ((((32768 + var1)) * ((int32_t) BMP280_DIG_P1)) / 32768);
+      pressure = (uint32_t)(((int32_t)(1048576 - adc_P) - (var2 / 4096)) * 3125);
+
+      if (var1 != 0)
+      {
+          /* Check for overflows against UINT32_MAX/2; if pres is left-shifted by 1 */
+          if (pressure < 0x80000000)
+          {
+              pressure = (pressure << 1) / ((uint32_t) var1);
+          }
+          else
+          {
+              pressure = (pressure / (uint32_t) var1) * 2;
+          }
+          var1 = (((int32_t) BMP280_DIG_P9) * ((int32_t) (((pressure / 8) * (pressure / 8)) / 8192))) /
+                 4096;
+          var2 = (((int32_t) (pressure / 4)) * ((int32_t) BMP280_DIG_P8)) / 8192;
+          pressure = (uint32_t) ((int32_t) pressure + ((var1 + var2 + BMP280_DIG_P7) / 16));
+      }
+      else
+      {
+          pressure = 0;
+      }
+    }
+  }
+
+  altitude = ((float) 44330.0 * (1 - pow(((double)pressure) / ((double)BASE_PRESSURE), 1 / 5.255)));
+
+  { // MPU9250
+    uint8_t mpuBuffer[14] = { 0 };
+    mpu.readBytes(MPU9250_ACCEL_DATA, mpuBuffer, 14);
+    
+    int16_t rax, ray, raz, rgx, rgy, rgz;
+    rax = (int16_t) (((int16_t)mpuBuffer[0] << 8) | ((int16_t)mpuBuffer[1]));
+    ray = (int16_t) (((int16_t)mpuBuffer[2] << 8) | ((int16_t)mpuBuffer[3]));
+    raz = (int16_t) (((int16_t)mpuBuffer[4] << 8) | ((int16_t)mpuBuffer[5]));
+    rgx = (int16_t) (((int16_t)mpuBuffer[8] << 8) | ((int16_t)mpuBuffer[9]));
+    rgy = (int16_t) (((int16_t)mpuBuffer[10] << 8) | ((int16_t)mpuBuffer[11]));
+    rgz = (int16_t) (((int16_t)mpuBuffer[12] << 8) | ((int16_t)mpuBuffer[13]));
+
+    ax = ((float)(rax - ((int16_t)ACCEL_X_OFFSET))) / ACCEL_SCALE_FACTOR;
+    ay = ((float)(ray - ((int16_t)ACCEL_Y_OFFSET))) / ACCEL_SCALE_FACTOR;
+    az = ((float)(raz - ((int16_t)ACCEL_Z_OFFSET))) / ACCEL_SCALE_FACTOR;
+    gx = ((float)(rgx - ((int16_t)GYRO_X_OFFSET))) / GYRO_SCALE_FACTOR;
+    gy = ((float)(rgy - ((int16_t)GYRO_Y_OFFSET))) / GYRO_SCALE_FACTOR;
+    gz = ((float)(rgz - ((int16_t)GYRO_Z_OFFSET))) / GYRO_SCALE_FACTOR;
+  }
   
   // If staging mode enabled, compare readings with trigger
   #ifdef LAUNCH_LOG_STAGE
     #ifdef PRESSURE
-    
-    #else
-      #ifdef ALTITUDE
+      //static int32_t pBuffer[10] ( 0 };
+
       
-      #endif
+      
+    #elif defined(ALTITUDE)
+      
+    #elif defined(APOAPSIS)
+
     #endif
   #endif
   
   // Save measurements to file
-  logData("DATA HERE", "BMP180"); // TEMPORARY
+  //static unsigned long lastlog = millis();
+
+  //if (lastlog + MEASUREMENT_INTERVAL <= millis())
+  //{
+    logData(pressure, altitude, temperature, ax, ay, az, gx, gy, gz);
+  //  lastlog = millis();
+  //}
   
   // Create new file every few intervals
   static unsigned long lasttime = micros();
 
-  if (lasttime + NEWFILE_INTERVAL_TIME >= micros())
+  if (lasttime + NEWFILE_INTERVAL_TIME <= micros())
   {
     // Create a new file
     createNewLogFile(logfile);
+    lasttime = micros();
   }
   
   // Check to see if it's time to stop the recording
-  static long lastpressed = -SHUTDOWN_TIME;
+  static long lastpressed = millis;
   if(digitalRead(BUTTON_PIN))
   {
-    if(lastpressed + SHUTDOWN_TIME >= millis())
+    if(lastpressed + SHUTDOWN_TIME <= millis())
     {
       // Shut down
       #ifdef DEBUG
-        rw_active = false;
         writeOutDebugMessage(35);
         writeOutDebugMessage(27);
-        writeOut(String(micros()));
+        writeOutDebugMessage(String(micros()));
         writeOutDebugMessage(28);
       #endif
       
       logfile->close();
+      debugFile.close();
       sdfilemanager.close();
       
       rgb.turnOff();
       digitalWrite(LAUNCH_PIN, LOW);
       exit(0);
     }
-    else if(lastpressed == -SHUTDOWN_TIME)
+    else
     {
       lastpressed = millis();
     }
-  }
-  else
-  {
-    lastpressed = -SHUTDOWN_TIME;
   }
 }
 
@@ -662,42 +770,41 @@ void loop()
 * Log data recorded by instruments.
 *
 */
-void logData(char* message, char* devicename)
+void logData(int32_t p, float a, int32_t t, float ax, float ay, float az, float gx, float gy, float gz)
 {
-  writeOut(DATAHEADER1);
-  writeOut(String(micros()));
-  writeOut(DATAHEADER2);
-  writeOut(devicename);
-  writeOut(DATAHEADER3);
-  writeOut(message);
-  writeOut("\n");
+  logfile->write(String(micros(), DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(p, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(a, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(t, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(ax, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(ay, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(az, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(gx, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(gy, DEC).c_str());
+  logfile->write(',');
+  logfile->write(String(gz, DEC).c_str());
+  logfile->write('\n');
+  logfile->sync();
 }
 
 /**
-* Writes out a message to the SD card, and Serial. (Serial is a mirror)
-*
-* @param message
+* Creates a new logfile. 
+* 
+* @param logfile Reference to SdFile.
 */
-void writeOut(char* message)
+void createNewLogFile(SdFile* logfile)
 {
-  #ifdef DEBUG
-    Serial.print(message);
-  #endif
-  
-  // Write to SD card
-  if (rw_active)
-  {
-    logfile->write(message);
-  }
-}
-
-/**
- * Overloaded function of writeOut with
- * @param message String object
- */
-void writeOut(String message)
-{
-  writeOut((char*)message.c_str());
+  static uint16_t fileId = 0;
+  logfile->close();
+  logfile->createContiguous(sdfilemanager, ("log_" + String(fileId++) + ".csv").c_str(), EXPECTED_FILE_SIZE);
 }
 
 #ifdef DEBUG
@@ -709,17 +816,17 @@ void writeOut(String message)
   void writeOutDebugMessage(int i)
   {
     strcpy_P(outBuffer, (char*) pgm_read_word(&messages[i]));
-    writeOut(outBuffer);
+    debugFile.write(outBuffer);
+    Serial.print(outBuffer);
+  }
+
+  /**
+   * Overloaded function of writeOut with
+   * @param message String object
+   */
+  void writeOutDebugMessage(String message)
+  {
+    debugFile.write(message.c_str());
+    Serial.print(message);
   }
 #endif
-
-/**
-* Creates a new logfile. 
-* 
-* @param logfile Reference to SdFile.
-*/
-void createNewLogFile(SdFile* logfile)
-{
-  logfile->close();
-  bool ok = logfile->createContiguous(sdfilemanager, ("log_" + String(micros()) + ".d").c_str(), 1) == 1;
-}
