@@ -33,7 +33,7 @@
 
 /* BEGINNING OF PROGRAM PREFERENCES */
 // Debug
-#define DEBUG ACTIVE                      // Comment this line out if you don't want debug
+//#define DEBUG ACTIVE                      // Comment this line out if you don't want debug
 #define BAUD_RATE 115200              // Change baud rate here
 
 // Measurement preferences
@@ -72,11 +72,11 @@
 #define LAUNCH_ARM_TIME 3000          // Change the launch arm time (ms)
 #define LAUNCH_TIMEOUT 2000           // Time between launch sequence activated and countdown begins (ms)
 #define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
-#define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between saving into a new file (us)
+#define NEWFILE_INTERVAL_TIME 5000000   // Change the interval between saving into a new file (us)
 #define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
 #define STAGE_TRIGGER_TIME 1000       // Amount of time, that the staging condition must stay valid before actual staging operation. (ms)
-#define LANDING_DETECTION_TIME 5000   // Amount of time the FDR must remain still until landing detection activates. (ms)
-#define LANDING_DETECTION_FROM 5000   // Amount of time, after which landing detection is armed. (ms)
+#define TOUCHDOWN_DETECTION_TIME 10000   // Amount of time the FDR must remain still until touchdown detection activates. (ms)
+#define TOUCHDOWN_DETECTION_FROM 20000   // Amount of time, after which touchdown detection is armed. (ms)
 
 // Advanced
 #define BMP280_POWER_MODE 3          // BMP280 power mode (3 = normal mode)
@@ -84,8 +84,8 @@
 
 /* SELECT OPERATIONAL MODE */
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
-#define LANDING_DETECTION ACTIVE          // Comment this line out to disable landing detection
-#define SAR_HELPER ACTIVE                 // Comment this line out to disable search and rescue helper (buzzer upon landing).
+#define TOUCHDOWN_DETECTION ACTIVE          // Comment this line out to disable touchdown detection
+#define SAR_HELPER ACTIVE                 // Comment this line out to disable search and rescue helper (buzzer upon touchdown).
 
 /*  OPERATION MODES:
 *     - PASSIVE_LOG: Only log flight data. Disables launch and staging features.
@@ -247,9 +247,9 @@
   const char user_abort[] PROGMEM = {"USER ABORTED LAUNCH_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
   const char staging1[] PROGMEM = {"STAGING CONDITION MET AT: "}; // 40
   const char staging2[] PROGMEM = {" microseconds_\nACTIVATING STAGING SERVO_\n"};
-  const char ldetect1[] PROGMEM = {"LANDING DETECTED AT: "}; // 42
+  const char ldetect1[] PROGMEM = {"TOUCHDOWN DETECTED AT: "}; // 42
   const char ldetect2[] PROGMEM = {" microseconds_\nSTOPPING RECORDING_\nSETTING LED TO BLUE_\n"};
-  const char init4[] PROGMEM = {"LANDING DETECTION ARMED "};
+  const char init4[] PROGMEM = {"TOUCHDOWN DETECTION ARMED "};
   const char init5[] PROGMEM = {" milliseconds AFTER LAUNCH_\n"}; // 45
   const char sar_helper[] PROGMEM = {"ALERTING SEARCH AND RESCUE_\n"}; // 46
   const char ldetect3[] PROGMEM = {"PRESS AND HOLD BUTTON TO SHUTDOWN_\n"}; // 47
@@ -333,9 +333,9 @@ void setup()
       #endif
     #endif
 
-    #ifdef LANDING_DETECTION
+    #ifdef TOUCHDOWN_DETECTION
       writeOutDebugMessage(44);
-      writeOutDebugMessage(String(LANDING_DETECTION_FROM, DEC));
+      writeOutDebugMessage(String(TOUCHDOWN_DETECTION_FROM, DEC));
       writeOutDebugMessage(45);
     #endif
 
@@ -638,7 +638,7 @@ void setup()
 
     // Buzzer no longer needed, destruct
     buzzer->turnOff();
-    #ifndef SAR_HELPER // Still needed for landing detection
+    #ifndef SAR_HELPER // Still needed for touchdown detection
       delete buzzer;
     #endif
 
@@ -848,20 +848,20 @@ void loop()
     #endif
   #endif
 
-  // Landing detection
-  #ifdef LANDING_DETECTION
+  // touchdown detection
+  #ifdef TOUCHDOWN_DETECTION
     static unsigned long ldtime = millis();
     static float ldalt = altitude;
-    static bool landingHappened = false;
+    static bool touchdownHappened = false;
   
     if (altitude != 0)
     {
       float absvalue = ldalt - altitude; // Must be calculated outside of abs(), due to function limitation. @see Arduino docs
       if (abs(absvalue) < 1.0f)
       {
-        if (ldtime + LANDING_DETECTION_TIME <= millis())
+        if (ldtime + TOUCHDOWN_DETECTION_TIME <= millis())
         {
-          if ((liftoffat + LANDING_DETECTION_FROM < millis()) && !landingHappened)
+          if ((liftoffat + TOUCHDOWN_DETECTION_FROM < millis()) && !touchdownHappened)
           {
             #ifdef DEBUG
               writeOutDebugMessage(35);
@@ -882,10 +882,10 @@ void loop()
             #endif
             
             rgb.setColor(BLUE);
-            landingHappened = true;
+            touchdownHappened = true;
           }
         }
-        else if (liftoffat + LANDING_DETECTION_FROM >= millis())
+        else if (liftoffat + TOUCHDOWN_DETECTION_FROM >= millis())
         {
           ldtime = millis(); // Reset clock, so detection doesnt occur right after launch
         }
@@ -910,8 +910,8 @@ void loop()
   }
   
   // Check to see if it's time to stop the recording
-  static long lastpressed = millis;
-  if(digitalRead(BUTTON_PIN))
+  static unsigned long lastpressed = millis();
+  if(digitalRead(BUTTON_PIN) == HIGH)
   {
     if(lastpressed + SHUTDOWN_TIME <= millis())
     {
@@ -936,10 +936,10 @@ void loop()
       digitalWrite(LAUNCH_PIN, LOW);
       exit(0);
     }
-    else
-    {
-      lastpressed = millis();
-    }
+  }
+  else
+  {
+    lastpressed = millis();
   }
 }
 
