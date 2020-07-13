@@ -37,12 +37,16 @@
 #define BAUD_RATE 115200              // Change baud rate here
 
 // Measurement preferences
-#define BASE_PRESSURE 100325        // Base pressure to use for altitude calculation
-#define MEASUREMENT_RATE 20         // Measurement rate: set the timeout between measurements (Hz).
+#define BASE_PRESSURE 100565        // Base pressure to use for altitude calculation
+#define MEASUREMENT_RATE 33         // Measurement rate: amount of measurements taken in 1 second (Hz).
 #define ACCEL_SENSITIVITY 0             // Change the accelerometer sensitivity
 #define GYRO_SENSITIVITY 0              // Change the gyroscope sensitivity
 #define PRESSURE_OVERSAMPLING 3      // Change the pressure oversampling setting
 #define TEMPERATURE_OVERSAMPLING 1   // Change the temperature oversampling setting
+
+// Staging servo preferences
+#define SERVO_START_ANGLE 0           // Starting servo angle (0-180 deg)
+#define SERVO_STAGE_ANGLE 90          // Servo angle at staging (0-180 deg)
 
 // Calibration data
 #define ACCEL_X_OFFSET 144 
@@ -70,13 +74,18 @@
 #define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
 #define NEWFILE_INTERVAL_TIME 3000000   // Change the interval between saving into a new file (us)
 #define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
+#define STAGE_TRIGGER_TIME 1000       // Amount of time, that the staging condition must stay valid before actual staging operation. (ms)
+#define LANDING_DETECTION_TIME 5000   // Amount of time the FDR must remain still until landing detection activates. (ms)
+#define LANDING_DETECTION_FROM 5000   // Amount of time, after which landing detection is armed. (ms)
 
 // Advanced
 #define BMP280_POWER_MODE 3          // BMP280 power mode (3 = normal mode)
-#define EXPECTED_FILE_SIZE 17408    // Expected size of log files (b)
+#define EXPECTED_FILE_SIZE 1    // Expected size of log files (b)
 
 /* SELECT OPERATIONAL MODE */
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
+#define LANDING_DETECTION ACTIVE          // Comment this line out to disable landing detection
+#define SAR_HELPER ACTIVE                 // Comment this line out to disable search and rescue helper (buzzer upon landing).
 
 /*  OPERATION MODES:
 *     - PASSIVE_LOG: Only log flight data. Disables launch and staging features.
@@ -87,8 +96,9 @@
 
 /* SELECT STAGE TRIGGER IF REQUIRED */
 #define ALTITUDE ACTIVE               // Change trigger mode here
-#define TRIGGER_ALTITUDE 200          // Change trigger altitude here
-#define TRIGGER_PRESSURE 100.0        // Change trigger pressure here
+#define TRIGGER_ALTITUDE -200          // Change trigger altitude here (m)
+#define TRIGGER_TEMPERATURE 2800      // Change trigger temperature here (C * 100)
+#define TRIGGER_PRESSURE 101565        // Change trigger pressure here (Pa)
 
 /*  STAGE TRIGGER MODES:
 *     - ALTITUDE: Activates staging at a specific altitude. (m)
@@ -134,24 +144,32 @@
 
 #define MEASUREMENT_INTERVAL (1000 / MEASUREMENT_RATE)
 
-#if defined PASSIVE_LOG
+#ifdef PASSIVE_LOG
   #define OPERATION_MODE "PASSIVE_LOG"
 #endif
 
-#if defined ONLY_LAUNCH_AND_LOG
+#ifdef ONLY_LAUNCH_AND_LOG
   #define OPERATION_MODE "ONLY_LAUNCH_AND_LOG"
 #endif
 
-#if defined LAUNCH_LOG_STAGE
+#ifdef LAUNCH_LOG_STAGE
   #define OPERATION_MODE "LAUNCH_LOG_STAGE"
 #endif
 
-#if defined ALTITUDE
+#ifdef ALTITUDE
   #define TRIGGER_MODE "ALTITUDE"
 #endif
 
-#if defined PRESSURE
+#ifdef PRESSURE
   #define TRIGGER_MODE "PRESSURE"
+#endif
+
+#ifdef TEMPERATURE
+  #define TRIGGER_MODE "TEMPERATURE"
+#endif
+
+#ifdef APOAPSIS
+  #define TRIGGER_MODE "APOAPSIS"
 #endif
 
 /* Pins */
@@ -212,12 +230,12 @@
   const char launch2[] PROGMEM = {" microseconds_\n"};
   const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
   const char init1[] PROGMEM = {"ALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: "}; // 24
-  const char trig1[] PROGMEM = {"STAGING TRIGGER MODE: "};
+  const char trig1[] PROGMEM = {"STAGING TRIGGER MODE: "}; // 25
   const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
   const char shutoff1[] PROGMEM = {"SHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "}; // 27
   const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_\n"};
   const char init_servo[] PROGMEM = {"Initializing servo motor...\n"};
-  const char init3[] PROGMEM = {"\nOPERATION MODE: "};
+  const char init3[] PROGMEM = {"\nOPERATION MODE: "}; // 30
   const char trig2[] PROGMEM = {"\nTRIGGER VALUE: "};
   const char mpu_init[] PROGMEM = {"Initializing MPU9250...\n"};
   const char bmp_init[] PROGMEM = {"Initializing BMP280...\n"};
@@ -227,7 +245,15 @@
   const char sd_err_o_ws[] PROGMEM = {"Error opening workspace..."};
   const char mpu_test_err[] PROGMEM = {"Error reading MPU9250 device id...\n"}; // 38
   const char user_abort[] PROGMEM = {"USER ABORTED LAUNCH_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
-  
+  const char staging1[] PROGMEM = {"STAGING CONDITION MET AT: "}; // 40
+  const char staging2[] PROGMEM = {" microseconds_\nACTIVATING STAGING SERVO_\n"};
+  const char ldetect1[] PROGMEM = {"LANDING DETECTED AT: "}; // 42
+  const char ldetect2[] PROGMEM = {" microseconds_\nSTOPPING RECORDING_\nSETTING LED TO BLUE_\n"};
+  const char init4[] PROGMEM = {"LANDING DETECTION ARMED "};
+  const char init5[] PROGMEM = {" milliseconds AFTER LAUNCH_\n"}; // 45
+  const char sar_helper[] PROGMEM = {"ALERTING SEARCH AND RESCUE_\n"}; // 46
+  const char ldetect3[] PROGMEM = {"PRESS AND HOLD BUTTON TO SHUTDOWN_\n"}; // 47
+
   const char* const messages[] PROGMEM =
   {
     init2, buzzer_init, rgb_init, sd_init, sd_type1, sd_clusters, sd_blockspersecond,
@@ -235,7 +261,8 @@
     test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
     launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
     init_servo, init3, trig2, mpu_init, bmp_init, test_err2, divider, bmp_test_err,
-    sd_err_o_ws, mpu_test_err, user_abort
+    sd_err_o_ws, mpu_test_err, user_abort, staging1, staging2, ldetect1, ldetect2,
+    init4, init5, sar_helper, ldetect3
   };
   /* END of messages */
 #endif
@@ -258,11 +285,14 @@ SdVolume sdvolume;
 SdFile* logfile;
 SdFile debugFile;
 SdFile sdfilemanager;
+
+unsigned long liftoffat; // time of liftoff in miliseconds, for land detection system.
 /* END of program variables */
 
 /* Function prototypes */
 void logData(int32_t, float, int32_t, float, float, float, float, float, float);
 void createNewLogFile(SdFile*);
+void activateStaging(void);
 
 #ifdef DEBUG
   void writeOutDebugMessage(int);
@@ -289,9 +319,11 @@ void setup()
     writeOutDebugMessage(11);
     
     #ifdef LAUNCH_LOG_STAGE
-      writeOutDebugMessage(25);
-      writeOutDebugMessage(String(TRIGGER_MODE));
-      writeOutDebugMessage(30);
+      #ifndef APOAPSIS
+        writeOutDebugMessage(25);
+        writeOutDebugMessage(String(TRIGGER_MODE));
+        writeOutDebugMessage(31);
+      #endif
       #ifdef PRESSURE
         writeOutDebugMessage(String(TRIGGER_PRESSURE) + F(" kPa\n"));
       #else
@@ -299,6 +331,12 @@ void setup()
           writeOutDebugMessage(String(TRIGGER_ALTITUDE) + F(" m\n"));
         #endif
       #endif
+    #endif
+
+    #ifdef LANDING_DETECTION
+      writeOutDebugMessage(44);
+      writeOutDebugMessage(String(LANDING_DETECTION_FROM, DEC));
+      writeOutDebugMessage(45);
     #endif
 
     writeOutDebugMessage(35);
@@ -361,6 +399,7 @@ void setup()
       writeOutDebugMessage(29);
     #endif
     stageservo.attach(SERVO_PIN);
+    stageservo.write(SERVO_START_ANGLE);
   #endif
 
   #ifdef DEBUG
@@ -595,10 +634,13 @@ void setup()
 
     // Ignite rocket (first stage)
     digitalWrite(LAUNCH_PIN, HIGH);
+    liftoffat = millis();
 
     // Buzzer no longer needed, destruct
     buzzer->turnOff();
-    delete buzzer;
+    #ifndef SAR_HELPER // Still needed for landing detection
+      delete buzzer;
+    #endif
 
     #ifdef DEBUG
     debugFile.createContiguous(sdfilemanager, "debug.txt", 1);
@@ -631,8 +673,13 @@ void setup()
 void loop()
 {
   // Take measurements
-  int32_t pressure, temperature;
-  float ax, ay, az, gx, gy, gz, altitude;
+  int32_t pressure = 0, temperature = 0;
+  float ax, ay, az, gx, gy, gz, altitude = 0.0f;
+
+  static unsigned long lastlog = millis();
+
+  if (lastlog + MEASUREMENT_INTERVAL <= millis())
+  {
   { // BMP280
     uint8_t bmpBuffer[6] = { 0 };
     bmp.readBytes(BMP280_PRESS, bmpBuffer, 6);
@@ -703,29 +750,154 @@ void loop()
     gy = ((float)(rgy - ((int16_t)GYRO_Y_OFFSET))) / GYRO_SCALE_FACTOR;
     gz = ((float)(rgz - ((int16_t)GYRO_Z_OFFSET))) / GYRO_SCALE_FACTOR;
   }
+
+  // Save measurements to file
+    logData(pressure, altitude, temperature, ax, ay, az, gx, gy, gz);
+    lastlog = millis();
+  }
   
   // If staging mode enabled, compare readings with trigger
   #ifdef LAUNCH_LOG_STAGE
+    static bool stagingHappened = false;
+  
     #ifdef PRESSURE
-      //static int32_t pBuffer[10] ( 0 };
+      static unsigned long lpmeas = millis();
 
-      
-      
-    #elif defined(ALTITUDE)
-      
-    #elif defined(APOAPSIS)
+      if (pressure <= TRIGGER_PRESSURE)
+      {
+        if (lpmeas + STAGE_TRIGGER_TIME <= millis())
+        {
+            // Staging command
+            if (!stagingHappened)
+            {
+              activateStaging();
+              stagingHappened = true;
+            }
+        }
+      }
+      else if (pressure != 0) // discrard false reading
+      {
+        lpmeas = millis();
+      }
+    #endif
+    #ifdef ALTITUDE
+      static unsigned long ameas = millis();
 
+      if (altitude >= ((float)TRIGGER_ALTITUDE))
+      {
+        if (ameas + STAGE_TRIGGER_TIME <= millis())
+        {
+            // Staging command
+            if (!stagingHappened)
+            {
+              activateStaging();
+              stagingHappened = true;
+            }
+        }
+      }
+      else if (altitude != 0.0f) // discrard false reading
+      {
+        ameas = millis();
+      }
+    #endif
+    #ifdef TEMPERATURE
+      static unsigned long tmeas = millis();
+
+      if (temperature <= TRIGGER_TEMPERATURE)
+      {
+        if (tmeas + STAGE_TRIGGER_TIME <= millis())
+        {
+            // Staging command
+            if (!stagingHappened)
+            {
+              activateStaging();
+              stagingHappened = true;
+            }
+        }
+      }
+      else if (temperature != 0) // discrard false reading
+      {
+        tmeas = millis();
+      }
+    #endif
+    #ifdef APOAPSIS
+      static unsigned long apmeas = millis();
+      static float lalt = altitude;
+      
+      if (altitude != 0) // discard false readings
+      {
+        if (altitude < lalt)
+        {
+          if (apmeas + STAGE_TRIGGER_TIME <= millis())
+          {
+            // Staging command
+            if (!stagingHappened)
+            {
+              activateStaging();
+              stagingHappened = true;
+            }
+          }
+        }
+        else
+        {
+          apmeas = millis();
+        }
+
+        lalt = altitude;
+      }
     #endif
   #endif
-  
-  // Save measurements to file
-  //static unsigned long lastlog = millis();
 
-  //if (lastlog + MEASUREMENT_INTERVAL <= millis())
-  //{
-    logData(pressure, altitude, temperature, ax, ay, az, gx, gy, gz);
-  //  lastlog = millis();
-  //}
+  // Landing detection
+  #ifdef LANDING_DETECTION
+    static unsigned long ldtime = millis();
+    static float ldalt = altitude;
+    static bool landingHappened = false;
+  
+    if (altitude != 0)
+    {
+      float absvalue = ldalt - altitude; // Must be calculated outside of abs(), due to function limitation. @see Arduino docs
+      if (abs(absvalue) < 1.0f)
+      {
+        if (ldtime + LANDING_DETECTION_TIME <= millis())
+        {
+          if ((liftoffat + LANDING_DETECTION_FROM < millis()) && !landingHappened)
+          {
+            #ifdef DEBUG
+              writeOutDebugMessage(35);
+              writeOutDebugMessage(42);
+              writeOutDebugMessage(String(micros(), DEC));
+              writeOutDebugMessage(43);
+              #ifdef SAR_HELPER
+                writeOutDebugMessage(46);
+              #endif
+              writeOutDebugMessage(47);
+            #endif
+            
+            logfile->close();
+            sdfilemanager.close();
+
+            #ifdef SAR_HELPER
+              buzzer->turnOn();
+            #endif
+            
+            rgb.setColor(BLUE);
+            landingHappened = true;
+          }
+        }
+        else if (liftoffat + LANDING_DETECTION_FROM >= millis())
+        {
+          ldtime = millis(); // Reset clock, so detection doesnt occur right after launch
+        }
+      }
+      else
+      {
+        ldtime = millis();
+      }
+  
+      ldalt = altitude;
+    }
+  #endif
   
   // Create new file every few intervals
   static unsigned long lasttime = micros();
@@ -754,6 +926,11 @@ void loop()
       logfile->close();
       debugFile.close();
       sdfilemanager.close();
+      Serial.flush();
+
+      #ifdef SAR_HELPER
+        buzzer->turnOff();
+      #endif
       
       rgb.turnOff();
       digitalWrite(LAUNCH_PIN, LOW);
@@ -805,6 +982,23 @@ void createNewLogFile(SdFile* logfile)
   static uint16_t fileId = 0;
   logfile->close();
   logfile->createContiguous(sdfilemanager, ("log_" + String(fileId++) + ".csv").c_str(), EXPECTED_FILE_SIZE);
+}
+
+/**
+ * Activates staging.
+ * 
+ */
+void activateStaging(void)
+{
+  #ifdef DEBUG
+    writeOutDebugMessage(35);
+    writeOutDebugMessage(40);
+    writeOutDebugMessage(String(micros(), DEC));
+    writeOutDebugMessage(41);
+  #endif
+
+  // Activate servo motor
+  stageservo.write(SERVO_STAGE_ANGLE);
 }
 
 #ifdef DEBUG
