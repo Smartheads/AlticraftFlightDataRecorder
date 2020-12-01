@@ -33,12 +33,12 @@
 
 /* BEGINNING OF PROGRAM PREFERENCES */
 // Debug
-//#define DEBUG ACTIVE                      // Comment this line out if you don't want debug
-#define BAUD_RATE 115200              // Change baud rate here
+#define DEBUG ACTIVE                      // Comment this line out if you don't want debug
+#define BAUD_RATE 9600              // Change baud rate here
 
 // Measurement preferences
 #define BASE_PRESSURE 100565        // Base pressure to use for altitude calculation
-#define MEASUREMENT_RATE 33         // Measurement rate: amount of measurements taken in 1 second (Hz).
+#define MEASUREMENT_RATE 1000         // Measurement rate: amount of measurements taken in 1 second (Hz).
 #define ACCEL_SENSITIVITY 0             // Change the accelerometer sensitivity
 #define GYRO_SENSITIVITY 0              // Change the gyroscope sensitivity
 #define PRESSURE_OVERSAMPLING 3      // Change the pressure oversampling setting
@@ -72,7 +72,7 @@
 #define LAUNCH_ARM_TIME 3000          // Change the launch arm time (ms)
 #define LAUNCH_TIMEOUT 2000           // Time between launch sequence activated and countdown begins (ms)
 #define LAUNCH_COUNTDOWN 10000          // Change the launch countdown time (ms)
-#define NEWFILE_INTERVAL_TIME 5000000   // Change the interval between saving into a new file (us)
+#define NEWFILE_INTERVAL_TIME 3000   // Change the interval between saving into a new file (ms)
 #define SHUTDOWN_TIME 3000            // Change the shutdown timer (ms)
 #define STAGE_TRIGGER_TIME 1000       // Amount of time, that the staging condition must stay valid before actual staging operation. (ms)
 #define TOUCHDOWN_DETECTION_TIME 10000   // Amount of time the FDR must remain still until touchdown detection activates. (ms)
@@ -415,7 +415,7 @@ void setup()
   * 
   * OK only if sdtest == 0x0F (1111)
   */
-  uint8_t sdtest = sdcard.init(SPI_HALF_SPEED, SD_CHIP_SELECT);
+  uint8_t sdtest = sdcard.init(SPI_FULL_SPEED, SD_CHIP_SELECT);
 
   // Initialize volume if card checks out
   if (sdtest == 0x01)
@@ -643,7 +643,7 @@ void setup()
     #endif
 
     #ifdef DEBUG
-    debugFile.createContiguous(sdfilemanager, "debug.txt", 1);
+    debugFile.open(sdfilemanager, "debug.txt", O_CREAT | O_WRITE);
     #endif
   
     #ifdef DEBUG
@@ -854,7 +854,7 @@ void loop()
     static float ldalt = altitude;
     static bool touchdownHappened = false;
   
-    if (altitude != 0)
+    if (altitude != 0.0f)
     {
       float absvalue = ldalt - altitude; // Must be calculated outside of abs(), due to function limitation. @see Arduino docs
       if (abs(absvalue) < 1.0f)
@@ -900,13 +900,13 @@ void loop()
   #endif
   
   // Create new file every few intervals
-  static unsigned long lasttime = micros();
+  static unsigned long lasttime = millis();
 
-  if (lasttime + NEWFILE_INTERVAL_TIME <= micros())
+  if (lasttime + NEWFILE_INTERVAL_TIME <= millis())
   {
     // Create a new file
     createNewLogFile(logfile);
-    lasttime = micros();
+    lasttime = millis();
   }
   
   // Check to see if it's time to stop the recording
@@ -948,7 +948,7 @@ void loop()
 *
 */
 void logData(int32_t p, float a, int32_t t, float ax, float ay, float az, float gx, float gy, float gz)
-{
+{ 
   logfile->write(String(micros(), DEC).c_str());
   logfile->write(',');
   logfile->write(String(p, DEC).c_str());
@@ -969,7 +969,6 @@ void logData(int32_t p, float a, int32_t t, float ax, float ay, float az, float 
   logfile->write(',');
   logfile->write(String(gz, DEC).c_str());
   logfile->write('\n');
-  logfile->sync();
 }
 
 /**
@@ -981,7 +980,7 @@ void createNewLogFile(SdFile* logfile)
 {
   static uint16_t fileId = 0;
   logfile->close();
-  logfile->createContiguous(sdfilemanager, ("log_" + String(fileId++) + ".csv").c_str(), EXPECTED_FILE_SIZE);
+  logfile->open(sdfilemanager, ("log_" + String(fileId++) + ".csv").c_str(), O_CREAT | O_WRITE);
 }
 
 /**
