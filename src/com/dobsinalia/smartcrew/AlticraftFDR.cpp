@@ -38,7 +38,7 @@
 
 // Measurement preferences
 #define BASE_PRESSURE 100565        // Base pressure to use for altitude calculation
-#define MEASUREMENT_RATE 1000         // Measurement rate: amount of measurements taken in 1 second (Hz).
+//#define MEASUREMENT_RATE 1000         // Measurement rate: samples in 1 second (Hz). Comment this line out to disable measurement limiting.
 #define ACCEL_SENSITIVITY 0             // Change the accelerometer sensitivity
 #define GYRO_SENSITIVITY 0              // Change the gyroscope sensitivity
 #define PRESSURE_OVERSAMPLING 3      // Change the pressure oversampling setting
@@ -85,6 +85,7 @@
 #define LAUNCH_LOG_STAGE ACTIVE            // Change operation mode here
 #define TOUCHDOWN_DETECTION ACTIVE          // Comment this line out to disable touchdown detection
 #define SAR_HELPER ACTIVE                 // Comment this line out to disable search and rescue helper (buzzer upon touchdown).
+#define LAUNCH_STABILITY_ABORT ACTIVE     // Comment this line out to disable the launch stability abort feature
 
 /*  OPERATION MODES:
 *     - PASSIVE_LOG: Only log flight data. Disables launch and staging features.
@@ -99,6 +100,7 @@
 #define TRIGGER_TEMPERATURE_MIN 2000   // Change trigger min temperature here (C * 100)
 #define TRIGGER_TEMPERATURE_MAX 2800   // Change trigger max temperature here (C * 100)
 #define TRIGGER_PRESSURE 101565        // Change trigger pressure here (Pa)
+#define LAUNCH_ABORT_SENSITIVITY 0.2f // Change launch abort sensitivity threshold value (g)
 
 /*  STAGE TRIGGER MODES:
 *     - ALTITUDE: Activates staging at a specific altitude. (m)
@@ -142,7 +144,9 @@
   #define GYRO_SCALE_FACTOR 16.4f
 #endif
 
-#define MEASUREMENT_INTERVAL (1000 / MEASUREMENT_RATE)
+#ifdef MEASUREMENT_RATE
+  #define MEASUREMENT_INTERVAL (1000 / MEASUREMENT_RATE)
+#endif
 
 #ifdef PASSIVE_LOG
   #define OPERATION_MODE "PASSIVE_LOG"
@@ -244,7 +248,7 @@
   const char bmp_test_err[] PROGMEM = {"Error reading BMP280 chip id...\n"};
   const char sd_err_o_ws[] PROGMEM = {"Error opening workspace..."};
   const char mpu_test_err[] PROGMEM = {"Error reading MPU9250 device id...\n"}; // 38
-  const char user_abort[] PROGMEM = {"USER ABORTED LAUNCH_\nSETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"};
+  const char launch_abort[] PROGMEM = {"SETTING LED TO WHITE_\nRESTART TO TRY AGAIN_\n"}; // 39
   const char staging1[] PROGMEM = {"STAGING CONDITION MET AT: "}; // 40
   const char staging2[] PROGMEM = {" microseconds_\nACTIVATING STAGING SERVO_\n"};
   const char ldetect1[] PROGMEM = {"TOUCHDOWN DETECTED AT: "}; // 42
@@ -253,6 +257,8 @@
   const char init5[] PROGMEM = {" milliseconds AFTER LAUNCH_\n"}; // 45
   const char sar_helper[] PROGMEM = {"ALERTING SEARCH AND RESCUE_\n"}; // 46
   const char ldetect3[] PROGMEM = {"PRESS AND HOLD BUTTON TO SHUTDOWN_\n"}; // 47
+  const char user_abort[] PROGMEM = {"USER ABORTED LAUNCH_\n"}; // 48
+  const char stab_abort[] PROGMEM = {"LAUNCH STABILITY ABORT_\n"}; // 49
 
   const char* const messages[] PROGMEM =
   {
@@ -261,8 +267,8 @@
     test_ok, sd_init_err, volume_init_err, mk_worksp_err, op_worksp_err , wait, warn,
     launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
     init_servo, init3, trig2, mpu_init, bmp_init, test_err2, divider, bmp_test_err,
-    sd_err_o_ws, mpu_test_err, user_abort, staging1, staging2, ldetect1, ldetect2,
-    init4, init5, sar_helper, ldetect3
+    sd_err_o_ws, mpu_test_err, launch_abort, staging1, staging2, ldetect1, ldetect2,
+    init4, init5, sar_helper, ldetect3, user_abort, stab_abort
   };
   /* END of messages */
 #endif
@@ -293,6 +299,7 @@ unsigned long liftoffat = 0; // time of liftoff in miliseconds, for land detecti
 void logData(int32_t, float, int32_t, float, float, float, float, float, float);
 void createNewLogFile(SdFile*);
 void activateStaging(void);
+void abortLaunch(void);
 
 #ifdef DEBUG
   void writeOutDebugMessage(int);
@@ -591,6 +598,8 @@ void setup()
     #ifdef DEBUG
       writeOutDebugMessage(20); // Launch signal recieved
     #endif
+  #elif // PASSIVE_LOG mode
+    rbg.setColor(RED);
   #endif
 
   #ifdef DEBUG
@@ -612,111 +621,131 @@ void loop()
 {
   // Take measurements
   int32_t pressure = 0, temperature = 0;
-  float ax, ay, az, gx, gy, gz, altitude = 0.0f;
+  float ax = 0.0f, ay = 0.0f, az = 0.0f, gx, gy, gz, altitude = 0.0f;
 
-  static unsigned long lastlog = millis();
-
-  if (lastlog + MEASUREMENT_INTERVAL <= millis())
-  {
-  { // BMP280
-    uint8_t bmpBuffer[6] = { 0 };
-    bmp.readBytes(BMP280_PRESS, bmpBuffer, 6);
-    
-    int32_t adc_P = (int32_t) ((((uint32_t) (bmpBuffer[0])) << 12) | (((uint32_t) (bmpBuffer[1])) << 4) | ((uint32_t) bmpBuffer[2] >> 4));
-    int32_t adc_T = (int32_t) ((((int32_t) (bmpBuffer[3])) << 12) | (((int32_t) (bmpBuffer[4])) << 4) | (((int32_t) (bmpBuffer[5])) >> 4));
+  #ifdef MEASUREMENT_INTERVAL
+    static unsigned long lastlog = millis();
   
+    if (lastlog + MEASUREMENT_INTERVAL <= millis())
     {
-      // Calculate compensated temperature. From BMP280_driver @BoschSensortech
-      int32_t var1, var2;
-      var1 = ((((adc_T / 8) - ((int32_t) BMP280_DIG_T1 << 1))) * ((int32_t) BMP280_DIG_T2)) / 2048;
-      var2 = (((((adc_T / 16) - ((int32_t) BMP280_DIG_T1)) * ((adc_T / 16) - ((int32_t) BMP280_DIG_T1))) / 4096) * ((int32_t) BMP280_DIG_T3)) / 16384;
-      int32_t t_fine = var1 + var2;
-      temperature = (t_fine * 5 + 128) / 256;
+  #endif
+    { // BMP280
+      uint8_t bmpBuffer[6] = { 0 };
+      bmp.readBytes(BMP280_PRESS, bmpBuffer, 6);
       
-      // Calculate compensated pressure. From BMP280_driver @BoschSensortech
-      var1 = (((int32_t) t_fine) / 2) - (int32_t) 64000;
-      var2 = (((var1 / 4) * (var1 / 4)) / 2048) * ((int32_t) BMP280_DIG_P6);
-      var2 = var2 + ((var1 * ((int32_t) BMP280_DIG_P5)) * 2);
-      var2 = (var2 / 4) + (((int32_t) BMP280_DIG_P4) * 65536);
-      var1 =
-          (((BMP280_DIG_P3 * (((var1 / 4) * (var1 / 4)) / 8192)) / 8) +
-           ((((int32_t) BMP280_DIG_P2) * var1) / 2)) / 262144;
-      var1 = ((((32768 + var1)) * ((int32_t) BMP280_DIG_P1)) / 32768);
-      pressure = (uint32_t)(((int32_t)(1048576 - adc_P) - (var2 / 4096)) * 3125);
-
-      if (var1 != 0)
+      int32_t adc_P = (int32_t) ((((uint32_t) (bmpBuffer[0])) << 12) | (((uint32_t) (bmpBuffer[1])) << 4) | ((uint32_t) bmpBuffer[2] >> 4));
+      int32_t adc_T = (int32_t) ((((int32_t) (bmpBuffer[3])) << 12) | (((int32_t) (bmpBuffer[4])) << 4) | (((int32_t) (bmpBuffer[5])) >> 4));
+    
       {
-          /* Check for overflows against UINT32_MAX/2; if pres is left-shifted by 1 */
-          if (pressure < 0x80000000)
-          {
-              pressure = (pressure << 1) / ((uint32_t) var1);
-          }
-          else
-          {
-              pressure = (pressure / (uint32_t) var1) * 2;
-          }
-          var1 = (((int32_t) BMP280_DIG_P9) * ((int32_t) (((pressure / 8) * (pressure / 8)) / 8192))) /
-                 4096;
-          var2 = (((int32_t) (pressure / 4)) * ((int32_t) BMP280_DIG_P8)) / 8192;
-          pressure = (uint32_t) ((int32_t) pressure + ((var1 + var2 + BMP280_DIG_P7) / 16));
-      }
-      else
-      {
-          pressure = 0;
+        // Calculate compensated temperature. From BMP280_driver @BoschSensortech
+        int32_t var1, var2;
+        var1 = ((((adc_T / 8) - ((int32_t) BMP280_DIG_T1 << 1))) * ((int32_t) BMP280_DIG_T2)) / 2048;
+        var2 = (((((adc_T / 16) - ((int32_t) BMP280_DIG_T1)) * ((adc_T / 16) - ((int32_t) BMP280_DIG_T1))) / 4096) * ((int32_t) BMP280_DIG_T3)) / 16384;
+        int32_t t_fine = var1 + var2;
+        temperature = (t_fine * 5 + 128) / 256;
+        
+        // Calculate compensated pressure. From BMP280_driver @BoschSensortech
+        var1 = (((int32_t) t_fine) / 2) - (int32_t) 64000;
+        var2 = (((var1 / 4) * (var1 / 4)) / 2048) * ((int32_t) BMP280_DIG_P6);
+        var2 = var2 + ((var1 * ((int32_t) BMP280_DIG_P5)) * 2);
+        var2 = (var2 / 4) + (((int32_t) BMP280_DIG_P4) * 65536);
+        var1 =
+            (((BMP280_DIG_P3 * (((var1 / 4) * (var1 / 4)) / 8192)) / 8) +
+             ((((int32_t) BMP280_DIG_P2) * var1) / 2)) / 262144;
+        var1 = ((((32768 + var1)) * ((int32_t) BMP280_DIG_P1)) / 32768);
+        pressure = (uint32_t)(((int32_t)(1048576 - adc_P) - (var2 / 4096)) * 3125);
+  
+        if (var1 != 0)
+        {
+            /* Check for overflows against UINT32_MAX/2; if pres is left-shifted by 1 */
+            if (pressure < 0x80000000)
+            {
+                pressure = (pressure << 1) / ((uint32_t) var1);
+            }
+            else
+            {
+                pressure = (pressure / (uint32_t) var1) * 2;
+            }
+            var1 = (((int32_t) BMP280_DIG_P9) * ((int32_t) (((pressure / 8) * (pressure / 8)) / 8192))) /
+                   4096;
+            var2 = (((int32_t) (pressure / 4)) * ((int32_t) BMP280_DIG_P8)) / 8192;
+            pressure = (uint32_t) ((int32_t) pressure + ((var1 + var2 + BMP280_DIG_P7) / 16));
+        }
+        else
+        {
+            pressure = 0;
+        }
       }
     }
-  }
-
-  altitude = ((float) 44330.0 * (1 - pow(((double)pressure) / ((double)BASE_PRESSURE), 1 / 5.255)));
-
-  { // MPU9250
-    uint8_t mpuBuffer[14] = { 0 };
-    mpu.readBytes(MPU9250_ACCEL_DATA, mpuBuffer, 14);
-    
-    int16_t rax, ray, raz, rgx, rgy, rgz;
-    rax = (int16_t) (((int16_t)mpuBuffer[0] << 8) | ((int16_t)mpuBuffer[1]));
-    ray = (int16_t) (((int16_t)mpuBuffer[2] << 8) | ((int16_t)mpuBuffer[3]));
-    raz = (int16_t) (((int16_t)mpuBuffer[4] << 8) | ((int16_t)mpuBuffer[5]));
-    rgx = (int16_t) (((int16_t)mpuBuffer[8] << 8) | ((int16_t)mpuBuffer[9]));
-    rgy = (int16_t) (((int16_t)mpuBuffer[10] << 8) | ((int16_t)mpuBuffer[11]));
-    rgz = (int16_t) (((int16_t)mpuBuffer[12] << 8) | ((int16_t)mpuBuffer[13]));
-
-    ax = ((float)(rax - ((int16_t)ACCEL_X_OFFSET))) / ACCEL_SCALE_FACTOR;
-    ay = ((float)(ray - ((int16_t)ACCEL_Y_OFFSET))) / ACCEL_SCALE_FACTOR;
-    az = ((float)(raz - ((int16_t)ACCEL_Z_OFFSET))) / ACCEL_SCALE_FACTOR;
-    gx = ((float)(rgx - ((int16_t)GYRO_X_OFFSET))) / GYRO_SCALE_FACTOR;
-    gy = ((float)(rgy - ((int16_t)GYRO_Y_OFFSET))) / GYRO_SCALE_FACTOR;
-    gz = ((float)(rgz - ((int16_t)GYRO_Z_OFFSET))) / GYRO_SCALE_FACTOR;
-  }
-
-  // Save measurements to file
-    logData(pressure, altitude, temperature, ax, ay, az, gx, gy, gz);
-    lastlog = millis();
-  }
+  
+    altitude = ((float) 44330.0 * (1 - pow(((double)pressure) / ((double)BASE_PRESSURE), 1 / 5.255)));
+  
+    { // MPU9250
+      uint8_t mpuBuffer[14] = { 0 };
+      mpu.readBytes(MPU9250_ACCEL_DATA, mpuBuffer, 14);
+      
+      int16_t rax, ray, raz, rgx, rgy, rgz;
+      rax = (int16_t) (((int16_t)mpuBuffer[0] << 8) | ((int16_t)mpuBuffer[1]));
+      ray = (int16_t) (((int16_t)mpuBuffer[2] << 8) | ((int16_t)mpuBuffer[3]));
+      raz = (int16_t) (((int16_t)mpuBuffer[4] << 8) | ((int16_t)mpuBuffer[5]));
+      rgx = (int16_t) (((int16_t)mpuBuffer[8] << 8) | ((int16_t)mpuBuffer[9]));
+      rgy = (int16_t) (((int16_t)mpuBuffer[10] << 8) | ((int16_t)mpuBuffer[11]));
+      rgz = (int16_t) (((int16_t)mpuBuffer[12] << 8) | ((int16_t)mpuBuffer[13]));
+  
+      ax = ((float)(rax - ((int16_t)ACCEL_X_OFFSET))) / ACCEL_SCALE_FACTOR;
+      ay = ((float)(ray - ((int16_t)ACCEL_Y_OFFSET))) / ACCEL_SCALE_FACTOR;
+      az = ((float)(raz - ((int16_t)ACCEL_Z_OFFSET))) / ACCEL_SCALE_FACTOR;
+      gx = ((float)(rgx - ((int16_t)GYRO_X_OFFSET))) / GYRO_SCALE_FACTOR;
+      gy = ((float)(rgy - ((int16_t)GYRO_Y_OFFSET))) / GYRO_SCALE_FACTOR;
+      gz = ((float)(rgz - ((int16_t)GYRO_Z_OFFSET))) / GYRO_SCALE_FACTOR;
+    }
+  
+      // Save measurements to file
+      logData(pressure, altitude, temperature, ax, ay, az, gx, gy, gz);
+  #ifdef MEASUREMENT_INTERVAL
+      lastlog = millis();
+    }
+  #endif
 
   // Basic flight control operations (launch and staging)
   #if defined(LAUNCH_LOG_STAGE) || defined(ONLY_LAUNCH_AND_LOG)
     if (liftoffat == 0) // Use variable liftoffat as marker (0 if not launched yet)
     {
       static unsigned long cdownstarted = millis(), lcolorswitch = millis();
-
+      
       // Listen for abort
       if (digitalRead(BUTTON_PIN) == HIGH)
       {
-        rgb.setColor(GREEN);
-        buzzer->turnOff();
-
         #ifdef DEBUG
-          writeOutDebugMessage(35); // Divider
-          writeOutDebugMessage(39); // User abort
+          writeOutDebugMessage(48);
         #endif
-
-        rgb.setColor(WHITE);
-
-        logfile->close();
-        sdfilemanager.close();
-        for(;;) {} // Wait until reset
+        abortLaunch();
       }
+
+      // Check launch stability if mode active
+      #ifdef LAUNCH_STABILITY_ABORT
+        static float lax = ax, lay = ay, laz = az;
+
+        if (ax != 0.0f && ay != 0.0f && az != 0.0f) // Filter error or no measurement this cycle
+        {
+          if (
+            (abs(ax-lax) > ((float)LAUNCH_ABORT_SENSITIVITY)
+            || abs(ay-lay) > ((float)LAUNCH_ABORT_SENSITIVITY)
+            || abs(az-laz) > ((float)LAUNCH_ABORT_SENSITIVITY))
+            && lax != 0.0f) // Dont trigger if lax is empty, first update!
+          {
+            // Deviation out of threshold, abort launch
+            #ifdef DEBUG
+              writeOutDebugMessage(49);
+            #endif
+            abortLaunch();
+          }
+          
+          lax = ax;
+          lay = ay;
+          laz = az;
+        }
+      #endif
 
       // Color warning
       if (lcolorswitch + 500 <= millis())
@@ -1001,6 +1030,24 @@ void activateStaging(void)
 
   // Activate servo motor
   stageservo.write(SERVO_STAGE_ANGLE);
+}
+
+/**
+ * Aborts the launch sequence and shuts down
+ */
+void abortLaunch(void)
+{
+  rgb.setColor(WHITE);
+  buzzer->turnOff();
+
+  #ifdef DEBUG
+    writeOutDebugMessage(35); // Divider
+    writeOutDebugMessage(39); // User abort
+  #endif
+
+  logfile->close();
+  sdfilemanager.close();
+  for(;;) {} // Wait until reset
 }
 
 #ifdef DEBUG
