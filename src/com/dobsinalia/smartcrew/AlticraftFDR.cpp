@@ -100,6 +100,8 @@
 #define TRIGGER_TEMPERATURE_MIN 2000   // Change trigger min temperature here (C * 100)
 #define TRIGGER_TEMPERATURE_MAX 2800   // Change trigger max temperature here (C * 100)
 #define TRIGGER_PRESSURE 101565        // Change trigger pressure here (Pa)
+#define BAD_MEAS_ABORT_THRESHOLD 100    // Change bad measurement abort threshold value (samples)
+#define BAD_WRITE_ABORT_THRESHOLD 100   // Change bad write to sd abort threshold value (occurances)
 #define LAUNCH_ABORT_SENSITIVITY 0.2f // Change launch abort sensitivity threshold value (g)
 
 /*  STAGE TRIGGER MODES:
@@ -296,8 +298,8 @@ unsigned long liftoffat = 0; // time of liftoff in miliseconds, for land detecti
 /* END of program variables */
 
 /* Function prototypes */
-void logData(int32_t, float, int32_t, float, float, float, float, float, float);
-void createNewLogFile(SdFile*);
+uint8_t logData(int32_t, float, int32_t, float, float, float, float, float, float);
+uint8_t createNewLogFile(SdFile*);
 void activateStaging(void);
 void abortLaunch(void);
 
@@ -620,8 +622,9 @@ void setup()
 void loop()
 {
   // Take measurements
+  uint8_t logsuccess = 0;
   int32_t pressure = 0, temperature = 0;
-  float ax = 0.0f, ay = 0.0f, az = 0.0f, gx, gy, gz, altitude = 0.0f;
+  float ax = 0.0f, ay = 0.0f, az = 0.0f, gx = 0.0f, gy = 0.0f, gz = 0.0f, altitude = 0.0f;
 
   #ifdef MEASUREMENT_INTERVAL
     static unsigned long lastlog = millis();
@@ -701,7 +704,7 @@ void loop()
     }
   
       // Save measurements to file
-      logData(pressure, altitude, temperature, ax, ay, az, gx, gy, gz);
+      logsuccess = logData(pressure, altitude, temperature, ax, ay, az, gx, gy, gz);
   #ifdef MEASUREMENT_INTERVAL
       lastlog = millis();
     }
@@ -712,6 +715,7 @@ void loop()
     if (liftoffat == 0) // Use variable liftoffat as marker (0 if not launched yet)
     {
       static unsigned long cdownstarted = millis(), lcolorswitch = millis();
+      static unsigned int badmeascount = 0, badwritecount = 0;
       
       // Listen for abort
       if (digitalRead(BUTTON_PIN) == HIGH)
@@ -720,6 +724,43 @@ void loop()
           writeOutDebugMessage(48);
         #endif
         abortLaunch();
+      }
+
+      // Make sure sensors are working
+      if (ax != 0.0f && ay != 0.0f && az != 0.0f && gx != 0.0f
+          && gy != 0.0f && gz != 0.0f && pressure != 0 && temperature != 0)
+      {
+        badmeascount = 0; // Reset counter if all sensors in check
+      }
+      else if (badmeascount > BAD_MEAS_ABORT_THRESHOLD)
+      {
+        // Abort on suspected hardware malfunction of sensors
+        #ifdef DEBUG
+        writeOutDebugMessage(48);
+        #endif
+        abortLaunch();
+      }
+      else
+      {
+        badmeascount++;
+      }
+
+      // Make sure sd card is working (saves are successfull)
+      if (logsuccess) // Not zero
+      {
+          badwritecount = 0; // Reset counter if sd card works
+      }
+      else if (badwritecount > BAD_WRITE_ABORT_THRESHOLD)
+      {
+        // Abort on suspected hardware malfunction of sd card
+        #ifdef DEBUG
+          writeOutDebugMessage(48);
+        #endif
+          abortLaunch();
+      }
+      else
+      {
+          badwritecount++;
       }
 
       // Check launch stability if mode active
@@ -881,7 +922,7 @@ void loop()
   #endif
   
   // touchdown detection
-  #ifdef TOUCHDOWN_DETECTION
+  #if defined(TOUCHDOWN_DETECTION) || defined(SAR_HELPER)
     static unsigned long ldtime = millis();
     static float ldalt = altitude;
     static bool touchdownHappened = false;
@@ -906,8 +947,10 @@ void loop()
               writeOutDebugMessage(47);
             #endif
             
-            logfile->close();
-            sdfilemanager.close();
+            #ifdef TOUCHDOWN_DETECTION
+                logfile->close();
+                sdfilemanager.close();
+            #endif
 
             #ifdef SAR_HELPER
               buzzer->turnOn();
@@ -978,41 +1021,45 @@ void loop()
 /**
 * Log data recorded by instruments.
 *
+* @return Returns 1 (true) if all write operations were successfull and 0 (false) if not.
 */
-void logData(int32_t p, float a, int32_t t, float ax, float ay, float az, float gx, float gy, float gz)
-{ 
-  logfile->write(String(micros(), DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(p, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(a, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(t, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(ax, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(ay, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(az, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(gx, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(gy, DEC).c_str());
-  logfile->write(',');
-  logfile->write(String(gz, DEC).c_str());
-  logfile->write('\n');
+uint8_t logData(int32_t p, float a, int32_t t, float ax, float ay, float az, float gx, float gy, float gz)
+{
+  uint8_t ret = logfile->write(String(micros(), DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(p, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(a, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(t, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(ax, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(ay, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(az, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(gx, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(gy, DEC).c_str());
+  ret = ret && logfile->write(',');
+  ret = ret && logfile->write(String(gz, DEC).c_str());
+  ret = ret && logfile->write('\n');
+
+  return ret;
 }
 
 /**
 * Creates a new logfile. 
 * 
 * @param logfile Reference to SdFile.
+* @return Returns 1 (true) if successfully creates the new logfile and 0 (false) if not.
 */
-void createNewLogFile(SdFile* logfile)
+uint8_t createNewLogFile(SdFile* logfile)
 {
   static uint16_t fileId = 0;
   logfile->close();
-  logfile->open(sdfilemanager, ("log_" + String(fileId++) + ".csv").c_str(), O_CREAT | O_WRITE);
+  return logfile->open(sdfilemanager, ("log_" + String(fileId++) + ".csv").c_str(), O_CREAT | O_WRITE);
 }
 
 /**
