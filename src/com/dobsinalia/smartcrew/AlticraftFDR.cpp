@@ -222,7 +222,7 @@
   const char volume_type[] PROGMEM = {"VOLUME TYPE: FAT"};
   const char volume_size1[] PROGMEM = {"VOLUME SIZE: "};
   const char volume_size2[] PROGMEM = {" kb_\n"};
-  const char end_line[] PROGMEM = {"_\n"};
+  const char end_line[] PROGMEM = {"_\n"}; // 11
   const char test[] PROGMEM = {"INITIALIZATION PHASE ENDED_\n--------------------------------------------\nTESTING PHASE BEGINNING_\n"};
   const char test_err1[] PROGMEM = {"AN ERROR HAS OCCURED DURING TESTING PHASE_\nREVIEW LOG FOR MORE INFORMATION_"};
   const char test_ok[] PROGMEM = {"TESTING PHASE ENDED_\nALL SYSTEMS NOMINAL_\n"}; // 14
@@ -235,13 +235,13 @@
   const char launch1[] PROGMEM = {"--------------------------------------------\nLIFTOFF_\nIGNITION AT: "};
   const char launch2[] PROGMEM = {" microseconds_\n"};
   const char startdatalog[] PROGMEM = {"--------------------------------------------\n"};
-  const char init1[] PROGMEM = {"ALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2019\n\nVERSION: 1.0\nBUILD DATE: "}; // 24
+  const char init1[] PROGMEM = {"ALTICRAFT FLIGHT DATA RECORDER_\n\nCOPYRIGHT (C) ROBERT HUTTER 2020\n\nVERSION: 1.0\nBUILD DATE: "}; // 24
   const char trig1[] PROGMEM = {"STAGING TRIGGER MODE: "}; // 25
   const char init_dig[] PROGMEM = {"Initializing digital output pins...\n"};
   const char shutoff1[] PROGMEM = {"SHUTDOWN COMMAND RECIVED_\nSHUTDOWN TIME: "}; // 27
   const char shutoff2[] PROGMEM = {"_\nSETTING RGB LED OFF_\nSHUTTING DOWN_\n"};
   const char init_servo[] PROGMEM = {"Initializing servo motor...\n"};
-  const char init3[] PROGMEM = {"\nOPERATION MODE: "}; // 30
+  const char init3[] PROGMEM = {"\nOPERATIONAL MODES:\n"}; // 30
   const char trig2[] PROGMEM = {"\nTRIGGER VALUE: "};
   const char mpu_init[] PROGMEM = {"Initializing MPU9250...\n"};
   const char bmp_init[] PROGMEM = {"Initializing BMP280...\n"};
@@ -326,6 +326,18 @@ void setup()
     writeOutDebugMessage(30);
     writeOutDebugMessage(String(OPERATION_MODE));
     writeOutDebugMessage(11);
+
+    #ifdef LAUNCH_STABILITY_ABORT
+      writeOutDebugMessage("LAUNCH_STABILITY_ABORT_\n");
+    #endif
+
+    #ifdef TOUCHDOWN_DETECTION
+      writeOutDebugMessage("TOUCHDOWN_DETECTION_\n");
+    #endif
+
+    #ifdef SAR_HELPER
+      writeOutDebugMessage("SAR_HELPER_\n");
+    #endif
     
     #ifdef LAUNCH_LOG_STAGE
       #ifndef APOAPSIS
