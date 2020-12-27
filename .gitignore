@@ -30,3 +30,14 @@
 *.exe
 *.out
 *.app
+
+# Visual studio generated files
+AlticraftLogPreprocessor/.vs/*
+*.sln
+*.aps
+*.vcxproj*
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/x64/*
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/Release/*
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/resource.h
+AlticraftLogPreprocessor/x64/*
+AlticraftLogPreprocessor/Release/*
