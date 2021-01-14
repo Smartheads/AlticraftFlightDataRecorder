@@ -41,3 +41,11 @@ AlticraftLogPreprocessor/AlticraftLogPreprocessor/Release/*
 AlticraftLogPreprocessor/AlticraftLogPreprocessor/resource.h
 AlticraftLogPreprocessor/x64/*
 AlticraftLogPreprocessor/Release/*
+*.ipch
+*.db
+*.opendb
+*.log
+*.idb
+*.pdb
+*.tlog
+AlticraftRuntimeSimulator/.vs/AlticraftRuntimeSimulator/v16/.suo
