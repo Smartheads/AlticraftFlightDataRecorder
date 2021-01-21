@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <JGY370.h>
+#include "JGY370.h"
 
 SRL::JGY370::JGY370(unsigned int forwardPin, unsigned int backwardPin, unsigned int pwmPin, int c1, unsigned int c2)
     : Encoder(c1, c2), Motor(forwardPin, backwardPin, pwmPin), Component(JGY370_COMPONENT_NAME, Component::ROTARY_ENCODER)

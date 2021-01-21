@@ -24,7 +24,7 @@
 #ifndef _COMPONENT_H
 #define _COMPONENT_H
 
-#include <SRL.h>
+#include "SRL.h"
 
 namespace SRL
 {

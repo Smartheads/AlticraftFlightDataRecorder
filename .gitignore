@@ -49,3 +49,6 @@ AlticraftLogPreprocessor/Release/*
 *.pdb
 *.tlog
 AlticraftRuntimeSimulator/.vs/AlticraftRuntimeSimulator/v16/.suo
+*.db-shm
+*.db-wal
+*.recipe

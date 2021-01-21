@@ -1,18 +1,18 @@
 /*
 * MIT License
 *
-* Copyright (c) 2019 Robert Hutter
-* 
+* Copyright (c) 2021 Robert Hutter
+*
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
 * in the Software without restriction, including without limitation the rights
 * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 * copies of the Software, and to permit persons to whom the Software is
 * furnished to do so, subject to the following conditions:
-* 
+*
 * The above copyright notice and this permission notice shall be included in all
 * copies or substantial portions of the Software.
-* 
+*
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,38 +21,27 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 *
-* Buzzer.h - Header file for class Buzzer, which controls piezoelectric buzzers.
+* Servo.cpp - Source code for virtual Servo. Part of the Virtual Arduino runtime
+*	enviroment.
 *
 */
 
-#ifndef BUZZER_H
-#define BUZZER_H
+#include "Servo.h"
 
-#include "SRL.h"
-#include "Component.h"
-
-#define BUZZER_COMPONENT_NAME "buzzer"
-
-#define ON true
-#define OFF false
-
-namespace SRL
+/**
+* Constructor method for class Servo.
+*
+*/
+Servo::Servo(void)
 {
-	class Buzzer : public Component
-	{
-		public:
-			Buzzer(uint8_t pin);
-			~Buzzer();
-		
-			void turnOff(void);
-			void turnOn(void);
-			void setState(bool state);
-			bool getState(void);
-		
-		private:
-			uint8_t* const pin = new uint8_t;
-			bool* const state = new bool;
-	};
+
 }
 
-#endif
+/**
+* Destructor method for class Servo.
+*
+*/
+Servo::~Servo(void)
+{
+
+}

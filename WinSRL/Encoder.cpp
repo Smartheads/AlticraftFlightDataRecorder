@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <Encoder.h>
+#include "Encoder.h"
 
 SRL::Encoder::Encoder(unsigned int c1, unsigned int c2) : Paul_Encoder(c1, c2)
 {

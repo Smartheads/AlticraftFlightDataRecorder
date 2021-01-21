@@ -31,9 +31,13 @@
 #include <stdio.h>
 #include <VirtualArduino.h>
 
-//#include <AlticraftFDR.h>
+#include "AlticraftFDR.h"
+//#include "AlticraftTest.h"
 
 HardwareSerial Serial;
+HardwareWire Wire;
+unsigned long sysbasetime;
+
 
 int wmain(void)
 {
@@ -42,15 +46,19 @@ int wmain(void)
     printf("Build date: %s\n\n", __DATE__);
 
     // Setup virtual arduino
-    Serial.begin(115200);
+    SYSTEMTIME systime;
+    GetLocalTime(&systime);
+    sysbasetime = systime.wHour * 3600000 + systime.wMinute * 60000 + systime.wSecond * 1000 + systime.wMilliseconds;
+
+    /*Serial.begin(115200);
     Serial.println("Hello world!");
-    Serial.print("Hello 2x!");
+    Serial.print("Hello 2x!");*/
 
     // Start the program
-    /*setup();
+    setup();
 
     for (;;)
     {
         loop();
-    }*/
+    }
 }

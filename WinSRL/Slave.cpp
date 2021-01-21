@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <Slave.h>
+#include "Slave.h"
 
 /**
 *	Constructor for the SCOM slave class.

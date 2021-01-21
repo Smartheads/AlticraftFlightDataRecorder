@@ -22,7 +22,7 @@
 * SOFTWARE.
 */
 
-#include <BMP280.h>
+#include "BMP280.h"
 
 /**
 *	Constructor of class BMP280.

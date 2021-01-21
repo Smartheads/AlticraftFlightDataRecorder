@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <MPU6050.h>
+#include "MPU6050.h"
 
 /**
 *	Constructor of the MPU6050 class.

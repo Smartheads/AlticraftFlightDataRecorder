@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <I2C.h>
+#include "I2C.h"
 
 /**
 *	Constructor of the I2C device.

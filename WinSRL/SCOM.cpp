@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <SCOM.h>
+#include "SCOM.h"
 
 /**
 *	Sends an int16_t over on serial.

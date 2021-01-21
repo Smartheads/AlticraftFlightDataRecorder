@@ -26,7 +26,7 @@
 *
 */
 
-#include <RGBLED.h>
+#include "RGBLED.h"
 
 /**
 *	Compares two SRL::color data types to see if they match.

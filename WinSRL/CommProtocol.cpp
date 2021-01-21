@@ -22,7 +22,7 @@
 * SOFTWARE.
 */
 
-#include <CommProtocol.h>
+#include "CommProtocol.h"
 
 /**
 * Write a byte to the device.

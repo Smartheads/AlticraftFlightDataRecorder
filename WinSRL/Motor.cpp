@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <Motor.h>
+#include "Motor.h"
 
 /**
 *	Class Motor's constructor.

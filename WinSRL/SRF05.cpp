@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <SRF05.h>
+#include "SRF05.h"
 
 SRL::SRF05::SRF05(uint8_t triggerPin, uint8_t echoPin, double maxDistanceCm): Sonar(triggerPin, echoPin, convertUs(maxDistanceCm)), Component(SRF05_COMPONENT_NAME, Component::SONAR)
 {

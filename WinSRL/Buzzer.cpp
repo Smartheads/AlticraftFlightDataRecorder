@@ -25,7 +25,7 @@
 *
 */
 
-#include <Buzzer.h>
+#include "Buzzer.h"
 
 /**
 *	Constructor for the class Buzzer.

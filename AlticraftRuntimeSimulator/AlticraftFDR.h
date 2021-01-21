@@ -318,4 +318,7 @@ void writeOutDebugMessage(String);
 
 /* END of function prototypes */
 
+void setup(void);
+void loop(void);
+
 #endif

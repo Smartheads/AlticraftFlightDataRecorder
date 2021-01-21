@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <Component.h>
+#include "Component.h"
 
 unsigned int SRL::Component::lastId = 0;
 

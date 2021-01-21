@@ -21,7 +21,7 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-#include <Accelerometer.h>
+#include "Accelerometer.h"
 
 /**
 *	Set the accelerometer's offsets.
