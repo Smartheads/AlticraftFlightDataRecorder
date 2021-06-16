@@ -27,10 +27,10 @@
 
 #include "VirtualArduino.h"
 
-std::list<Interrupt> intregistry;
+std::list<vard::Interrupt> intregistry;
 std::map<uint8_t, PinModes> pinregistry;
-HardwareSerial Serial;
-unsigned long sysbasetime;
+vard::HardwareSerial Serial;
+unsigned long vard::sysbasetime;
 bool allowinterrupts = true;
 
 /**
@@ -61,7 +61,7 @@ void interrupts(void)
 */
 void attachInterrupt(int interrupt, void (*ISR)(void), InterruptMode mode)
 {
-	Interrupt i = Interrupt();
+	vard::Interrupt i = vard::Interrupt();
 	i.number = interrupt;
 	i.ISR = ISR;
 	i.mode = mode;
@@ -76,7 +76,7 @@ void attachInterrupt(int interrupt, void (*ISR)(void), InterruptMode mode)
 */
 void detachInterrupt(int interrupt)
 {
-	for (std::list<Interrupt>::iterator i = intregistry.begin(); i != intregistry.end(); ++i)
+	for (std::list<vard::Interrupt>::iterator i = intregistry.begin(); i != intregistry.end(); ++i)
 	{
 		if ((*i).number == interrupt)
 		{
@@ -93,26 +93,26 @@ void detachInterrupt(int interrupt)
 * @param msg c String of message.
 * @param enum level
 */
-void logevent(Level level, const char* msg)
+void vard::logevent(Level level, const char* msg)
 {
 	SYSTEMTIME systime;
 	GetLocalTime(&systime);
 
 	switch (level)
 	{
-	case Level::FATAL:
+	case vard::Level::FATAL:
 		printf("[FATAL][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
 		break;
 
-	case Level::ERR:
+	case vard::Level::ERR:
 		printf("[ERROR][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
 		break;
 
-	case Level::SEVERE:
+	case vard::Level::SEVERE:
 		printf("[SEVERE][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
 		break;
 
-	case Level::WARNING:
+	case vard::Level::WARNING:
 		printf("[WARNING][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
 		break;
 
@@ -132,7 +132,7 @@ unsigned long millis(void)
 	SYSTEMTIME systime;
 	GetLocalTime(&systime);
 	unsigned long current = systime.wHour * 3600000 + systime.wMinute * 60000 + systime.wSecond * 1000 + systime.wMilliseconds;
-	return current - sysbasetime;
+	return current - vard::sysbasetime;
 }
 
 /**
@@ -194,17 +194,17 @@ void pinMode(uint8_t pin, PinModes mode)
 
 	case INPUT:
 		sprintf_s(buff, "Pin %u set for INPUT.", pin);
-		logevent(Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, buff);
 		break;
 
 	case OUTPUT:
 		sprintf_s(buff, "Pin %u set for OUTPUT.", pin);
-		logevent(Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, buff);
 		break;
 
 	case INPUT_PULLUP:
 		sprintf_s(buff, "Pin %u set for INPUT_PULLUP.", pin);
-		logevent(Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, buff);
 		break;
 	}
 }
@@ -224,7 +224,7 @@ void digitalWrite(uint8_t pin, OutputLevel level)
 	if (it == pinregistry.end())
 	{
 		sprintf_s(buff, 64, "digitalWrite called. Pin not registered. pin=%u", pin);
-		logevent(Level::ERR, buff);
+		vard::logevent(vard::Level::ERR, buff);
 	}
 	else if (pinregistry.at(pin) == PinModes::OUTPUT)
 	{
@@ -232,24 +232,24 @@ void digitalWrite(uint8_t pin, OutputLevel level)
 		{
 		case LOW:
 			sprintf_s(buff, 64, "digitalWrite called. pin=%u value=LOW", pin);
-			logevent(Level::INFO, buff);
+			vard::logevent(vard::Level::INFO, buff);
 			break;
 
 		case HIGH:
 			sprintf_s(buff, 64, "digitalWrite called. pin=%u value=HIGH", pin);
-			logevent(Level::INFO, buff);
+			vard::logevent(vard::Level::INFO, buff);
 			break;
 
 		default:
 			sprintf_s(buff, 64, "digitalWrite called. pin=%u value=undefined", pin);
-			logevent(Level::ERR, buff);
+			vard::logevent(vard::Level::ERR, buff);
 			break;
 		}
 	}
 	else
 	{
 		sprintf_s(buff, 64, "digitalWrite called. Pin not set for OUTPUT. pin=%u", pin);
-		logevent(Level::ERR, buff);
+		vard::logevent(vard::Level::ERR, buff);
 	}
 }
 
@@ -266,19 +266,19 @@ OutputLevel digitalRead(uint8_t pin)
 	if (it == pinregistry.end())
 	{
 		sprintf_s(buff, 64, "digitalRead called. Pin not registered. pin=%u", pin);
-		logevent(Level::ERR, buff);
+		vard::logevent(vard::Level::ERR, buff);
 	}
 	else if (pinregistry.at(pin) == PinModes::INPUT || pinregistry.at(pin) == PinModes::INPUT_PULLUP)
 	{
 		sprintf_s(buff, 64, "digitalRead called. pin=%u", pin);
-		logevent(Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, buff);
 
 		return OutputLevel::LOW;
 	}
 	else
 	{
 		sprintf_s(buff, 64, "digitalRead called. Pin not set for INPUT. pin=%u", pin);
-		logevent(Level::ERR, buff);
+		vard::logevent(vard::Level::ERR, buff);
 	}
 	return OutputLevel::LOW;
 }
@@ -298,17 +298,17 @@ void analogWrite(uint8_t pin, uint16_t value)
 	if (it == pinregistry.end())
 	{
 		sprintf_s(buff, 64, "analogWrite called. Pin not registered. pin=%u", pin);
-		logevent(Level::ERR, buff);
+		vard::logevent(vard::Level::ERR, buff);
 	}
 	else if (pinregistry.at(pin) == PinModes::OUTPUT)
 	{
 		sprintf_s(buff, 64, "analogWrite called. pin=%u value=%u", pin, value);
-		logevent(Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, buff);
 	}
 	else
 	{
 		sprintf_s(buff, 64, "analogWrite called. Pin not set for OUTPUT. pin=%u", pin);
-		logevent(Level::ERR, buff);
+		vard::logevent(vard::Level::ERR, buff);
 	}
 }
 
@@ -498,7 +498,7 @@ std::string String::std_string(void)
 * Constructor method for class HardwareSerial.
 *
 */
-HardwareSerial::HardwareSerial(void)
+vard::HardwareSerial::HardwareSerial(void)
 {
 	
 }
@@ -507,7 +507,7 @@ HardwareSerial::HardwareSerial(void)
 * Destructor for class HardwareSerial.
 *
 */
-HardwareSerial::~HardwareSerial(void)
+vard::HardwareSerial::~HardwareSerial(void)
 {
 	if (this->readbuffer != NULL)
 	{
@@ -523,20 +523,20 @@ HardwareSerial::~HardwareSerial(void)
 * @param baud - Baud rate of serial communication
 * @return
 */
-bool HardwareSerial::begin(unsigned long baud)
+bool vard::HardwareSerial::begin(unsigned long baud)
 {
 	if (this->isavailable)
 	{
 		char buff[64];
 		sprintf_s(buff, "Serial.begin called: Baud set to %lu.", baud);
-		logevent(Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, buff);
 
 		this->isconnected = true;
 		return true;
 	}
 	else
 	{
-		logevent(Level::ERR, "Serial.begin called: No device available.");
+		vard::logevent(vard::Level::ERR, "Serial.begin called: No device available.");
 
 		return false;
 	}
@@ -546,9 +546,9 @@ bool HardwareSerial::begin(unsigned long baud)
 * Flushes outgoing serial buffer.
 *
 */
-void HardwareSerial::flush(void)
+void vard::HardwareSerial::flush(void)
 {
-	logevent(Level::INFO, "Serial.flush called.");
+	vard::logevent(vard::Level::INFO, "Serial.flush called.");
 }
 
 /**
@@ -556,17 +556,17 @@ void HardwareSerial::flush(void)
 *
 * @param text Text to print to Serial.
 */
-void HardwareSerial::print(const char* text)
+void vard::HardwareSerial::print(const char* text)
 {
 	if (!this->isconnected)
 	{
-		logevent(Level::ERR, "Serial.print called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.print called. Port not open.");
 		return;
 	}
 	size_t len = strlen(text) + 32;
 	char* buff = (char*)malloc(len*sizeof(char));
 	sprintf_s(buff, len, "Serial.print called: %s", text);
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	free(buff);
 }
 
@@ -575,11 +575,11 @@ void HardwareSerial::print(const char* text)
 *
 * @param text The message to print.
 */
-void HardwareSerial::println(const char* text)
+void vard::HardwareSerial::println(const char* text)
 {
 	if (!this->isconnected)
 	{
-		logevent(Level::ERR, "Serial.println called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.println called. Port not open.");
 		return;
 	}
 	/*char* newmsg;
@@ -594,7 +594,7 @@ void HardwareSerial::println(const char* text)
 	size_t len = strlen(text) + 32;
 	char* buff = (char*)malloc(len * sizeof(char));
 	sprintf_s(buff, len, "Serial.println called: %s", text);
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	free(buff);
 }
 
@@ -603,17 +603,17 @@ void HardwareSerial::println(const char* text)
 *
 * @param str String to print.
 */
-void HardwareSerial::print(String str)
+void vard::HardwareSerial::print(String str)
 {
 	if (!this->isconnected)
 	{
-		logevent(Level::ERR, "Serial.print called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.print called. Port not open.");
 		return;
 	}
 	char* buff;
 	buff = (char*)malloc(str.length() + 64);
 	sprintf_s(buff, str.length() + 64, "Serial.print called: %s", str.c_str());
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	free(buff);
 }
 
@@ -622,17 +622,17 @@ void HardwareSerial::print(String str)
 *
 * @param str String to print.
 */
-void HardwareSerial::println(String str)
+void vard::HardwareSerial::println(String str)
 {
 	if (!this->isconnected)
 	{
-		logevent(Level::ERR, "Serial.println called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.println called. Port not open.");
 		return;
 	}
 	char* buff;
 	buff = (char*)malloc(str.length() + 64);
 	sprintf_s(buff, str.length() + 64, "Serial.println called: %s", str.c_str());
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	free(buff);
 }
 
@@ -642,11 +642,11 @@ void HardwareSerial::println(String str)
 * @param num Number to print.
 * @param radix Radix to print in i.e. DEC.
 */
-void HardwareSerial::print(int16_t num, Radix radix)
+void vard::HardwareSerial::print(int16_t num, Radix radix)
 {
 	if (!this->isconnected)
 	{
-		logevent(Level::ERR, "Serial.print called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.print called. Port not open.");
 		return;
 	}
 	char buff[32];
@@ -674,11 +674,11 @@ void HardwareSerial::print(int16_t num, Radix radix)
 * @param num Number to print.
 * @param radix Radix to print in i.e. DEC.
 */
-void HardwareSerial::println(int16_t num, Radix radix)
+void vard::HardwareSerial::println(int16_t num, Radix radix)
 {
 	if (!this->isconnected)
 	{
-		logevent(Level::ERR, "Serial.println called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.println called. Port not open.");
 		return;
 	}
 	char buff[32];
@@ -704,17 +704,17 @@ void HardwareSerial::println(int16_t num, Radix radix)
 * 
 * @param val Value of byte to write.
 */
-void HardwareSerial::write(uint8_t val)
+void vard::HardwareSerial::write(uint8_t val)
 {
 	if (this->isconnected)
 	{
 		char buff[64];
 		sprintf_s(buff, 64, "Wire.write called. value=%u", val);
-		logevent(Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, buff);
 	}
 	else
 	{
-		logevent(Level::ERR, "Serial.write called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.write called. Port not open.");
 	}
 }
 
@@ -724,7 +724,7 @@ void HardwareSerial::write(uint8_t val)
 * @param buff Byte buffer to write from.
 * @param size Size of byte buffer
 */
-void HardwareSerial::write(uint8_t* buff, unsigned int size)
+void vard::HardwareSerial::write(uint8_t* buff, unsigned int size)
 {
 	if (this->isconnected)
 	{
@@ -735,7 +735,7 @@ void HardwareSerial::write(uint8_t* buff, unsigned int size)
 	}
 	else
 	{
-		logevent(Level::ERR, "Serial.write called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.write called. Port not open.");
 	}
 }
 
@@ -744,7 +744,7 @@ void HardwareSerial::write(uint8_t* buff, unsigned int size)
 * 
 * @return
 */
-uint8_t HardwareSerial::read(void)
+uint8_t vard::HardwareSerial::read(void)
 {
 	if (this->isconnected)
 	{
@@ -752,17 +752,17 @@ uint8_t HardwareSerial::read(void)
 		{
 			char buff[64];
 			sprintf_s(buff, 64, "Serial.read called. value=%u", this->readbuffer[pos]);
-			logevent(Level::INFO, buff);
+			vard::logevent(vard::Level::INFO, buff);
 			return this->readbuffer[pos++];
 		}
 		else
 		{
-			logevent(Level::ERR, "Serial.read called. readbuffer empty");
+			vard::logevent(vard::Level::ERR, "Serial.read called. readbuffer empty");
 			return 0;
 		}
 	}
 	
-	logevent(Level::ERR, "Serial.read called. Port not open.");
+	vard::logevent(vard::Level::ERR, "Serial.read called. Port not open.");
 	return 0;
 }
 
@@ -773,7 +773,7 @@ uint8_t HardwareSerial::read(void)
 * @param len Number of bytes to read. Must be less
 *	then Serial.available().
 */
-void HardwareSerial::readBytes(uint8_t* buff, unsigned int len)
+void vard::HardwareSerial::readBytes(uint8_t* buff, unsigned int len)
 {
 	if (this->isconnected)
 	{
@@ -784,7 +784,7 @@ void HardwareSerial::readBytes(uint8_t* buff, unsigned int len)
 	}
 	else
 	{
-		logevent(Level::ERR, "Serial.readBytes called. Port not open.");
+		vard::logevent(vard::Level::ERR, "Serial.readBytes called. Port not open.");
 	}
 }
 
@@ -793,7 +793,7 @@ void HardwareSerial::readBytes(uint8_t* buff, unsigned int len)
 * 
 * @return String object.
 */
-String HardwareSerial::readString(void)
+String vard::HardwareSerial::readString(void)
 {
 	if (this->isconnected)
 	{
@@ -809,7 +809,7 @@ String HardwareSerial::readString(void)
 		return str;
 	}
 
-	logevent(Level::ERR, "Serial.readString called. Port not open.");
+	vard::logevent(vard::Level::ERR, "Serial.readString called. Port not open.");
 	return String();
 }
 
@@ -818,7 +818,7 @@ String HardwareSerial::readString(void)
 * 
 * @return
 */
-unsigned int HardwareSerial::available(void)
+unsigned int vard::HardwareSerial::available(void)
 {
 	return this->buffsize - this->pos;
 }
@@ -828,9 +828,9 @@ unsigned int HardwareSerial::available(void)
 *
 * @param delay Maximum timeout in milliseconds.
 */
-void HardwareSerial::setTimeout(unsigned long delay)
+void vard::HardwareSerial::setTimeout(unsigned long delay)
 {
 	char buff[64];
 	sprintf_s(buff, 64, "Serial.setTimeout called. value=%lu", delay);
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 }

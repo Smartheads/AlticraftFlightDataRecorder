@@ -51,38 +51,26 @@
 
 typedef uint8_t byte;
 
-enum class Level { FATAL, ERR, SEVERE, WARNING, INFO };
 enum PinModes { INPUT, OUTPUT, INPUT_PULLUP };
 enum OutputLevel { LOW, HIGH };
 enum class InterruptMode { LOW, CHANGE, RISING, FALLING }; // This will cause issues in the future with sketches using interrupts.
 enum Radix { DEC, OCT, HEX };
 
-typedef struct interrupt
-{
-	int number;
-	void (*ISR)(void);
-	InterruptMode mode;
-} Interrupt;
+/* Arduino library functions */
 
-extern std::list<Interrupt> intregistry;
 extern bool allowinterrupts;
 void noInterrupts(void);
 void interrupts(void);
 void attachInterrupt(int, void (*)(void), InterruptMode);
 void detachInterrupt(int);
 
-void logevent(Level, const char*);
-
 unsigned long millis(void);
 unsigned long micros(void);
-
-extern unsigned long sysbasetime;
 
 unsigned long micros(void);
 void delay(unsigned long);
 void delayMicroseconds(unsigned long);
 
-extern std::map<uint8_t, PinModes> pinregistry;
 void pinMode(uint8_t, PinModes);
 void digitalWrite(uint8_t, OutputLevel);
 OutputLevel digitalRead(uint8_t);
@@ -111,36 +99,76 @@ private:
 	std::string str;
 };
 
-class HardwareSerial
+/* Virtual Arduino specific things (not part of the actual Arduino library) */
+namespace vard
 {
-public:
-	HardwareSerial(void);
-	~HardwareSerial(void);
+	// Interrupts
+	typedef struct interrupt
+	{
+		int number;
+		void (*ISR)(void);
+		InterruptMode mode;
+	} Interrupt;
 
-	bool begin(unsigned long);
-	void flush(void);
-	
-	void print(const char*);
-	void println(const char*);
-	void print(String);
-	void println(String);
-	void print(int16_t, Radix = DEC);
-	void println(int16_t, Radix = DEC);
-	void write(uint8_t);
-	void write(uint8_t*, unsigned int);
-	uint8_t read(void);
-	void readBytes(uint8_t*, unsigned int);
-	String readString(void);
+	extern std::list<Interrupt> intregistry;
 
-	unsigned int available(void);
-	void setTimeout(unsigned long);
+	// Timing
+	extern unsigned long sysbasetime;
 
-private:
-	bool isavailable = true, isconnected = false;
-	unsigned int buffsize = 0, pos = 0;
-	uint8_t* readbuffer = NULL;
-};
+	// Console
+	enum class Level { FATAL, ERR, SEVERE, WARNING, INFO };
+	void logevent(Level, const char*);
 
-extern HardwareSerial Serial;
+	// Pins
+	extern std::map<uint8_t, PinModes> pinregistry;
+
+	// Serial
+	class HardwareSerial
+	{
+	public:
+		HardwareSerial(void);
+		~HardwareSerial(void);
+
+		bool begin(unsigned long);
+		void flush(void);
+
+		void print(const char*);
+		void println(const char*);
+		void print(String);
+		void println(String);
+		void print(int16_t, Radix = DEC);
+		void println(int16_t, Radix = DEC);
+		void write(uint8_t);
+		void write(uint8_t*, unsigned int);
+		uint8_t read(void);
+		void readBytes(uint8_t*, unsigned int);
+		String readString(void);
+
+		unsigned int available(void);
+		void setTimeout(unsigned long);
+
+	private:
+		bool isavailable = true, isconnected = false;
+		unsigned int buffsize = 0, pos = 0;
+		uint8_t* readbuffer = NULL;
+	};
+
+	// I2C device emulation
+	class I2C_Device
+	{
+	public:
+		I2C_Device(uint8_t);
+		~I2C_Device(void);
+
+	protected:
+		uint8_t address;
+	};
+
+	extern std::list<I2C_Device> i2c_device_registry;
+	void attach_I2C_Device(I2C_Device*);
+	void detach_I2C_Device(I2C_Device*);
+}
+
+extern vard::HardwareSerial Serial;
 
 #endif

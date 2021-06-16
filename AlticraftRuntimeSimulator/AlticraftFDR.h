@@ -30,7 +30,7 @@
 
 #ifndef Arduino_h
     #include <VirtualArduino.h>
-    extern HardwareSerial Serial;
+    extern vard::HardwareSerial Serial;
 #endif
 
 #include <RGBLED.h>

@@ -55,7 +55,7 @@ uint8_t Servo::attach(unsigned int pin)
 {
     char buff[64];
     sprintf_s(buff, 64, "Servo.attach called. pin=%u", pin);
-    logevent(Level::INFO, buff);
+    vard::logevent(vard::Level::INFO, buff);
     return true;
 }
 
@@ -68,5 +68,5 @@ void Servo::write(int pos)
 {
     char buff[64];
     sprintf_s(buff, 64, "Servo.write called. pos=%d", pos);
-    logevent(Level::INFO, buff);
+    vard::logevent(vard::Level::INFO, buff);
 }

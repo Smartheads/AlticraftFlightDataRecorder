@@ -56,7 +56,7 @@ uint8_t Sd2Card::init(int speed, int cs)
 {
 	char buff[64];
 	sprintf_s(buff, 64, "SD2Card.init called. speed=%d cs=%d", speed, cs);
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	return true;
 }
 
@@ -94,7 +94,7 @@ SdVolume::~SdVolume(void)
 */
 uint8_t SdVolume::init(Sd2Card* sd)
 {
-	logevent(Level::INFO, "SdVolume.init called.");
+	vard::logevent(vard::Level::INFO, "SdVolume.init called.");
 	return true;
 }
 
@@ -153,12 +153,12 @@ uint8_t SdFile::openRoot(SdVolume* vol)
 {
 	if (vol->rootPath != NULL)
 	{
-		logevent(Level::INFO, "SdFile.openRoot called.");
+		vard::logevent(vard::Level::INFO, "SdFile.openRoot called.");
 		path = vol->rootPath;
 		return true;
 	}
 	
-	logevent(Level::ERR, "SdFile.openRoot called. SdVolume rootPath = NULL.");
+	vard::logevent(vard::Level::ERR, "SdFile.openRoot called. SdVolume rootPath = NULL.");
 	return false;
 }
 
@@ -188,17 +188,17 @@ uint8_t SdFile::makeDir(SdFile* dir, const char* dirname)
 		if (result)
 		{
 			sprintf_s(buff, 128, "SdFile.makeDir called. Dir created. dirname=%s", dirname);
-			logevent(Level::INFO, buff);
+			vard::logevent(vard::Level::INFO, buff);
 		}
 		else
 		{
 			sprintf_s(buff, 128, "SdFile.makeDir called. Failed to create new dir. dirname=%s", dirname);
-			logevent(Level::ERR, buff);
+			vard::logevent(vard::Level::ERR, buff);
 		}
 		return result;
 	}
 
-	logevent(Level::ERR, "SdFile.makeDir called. SdFile path = NULL.");
+	vard::logevent(vard::Level::ERR, "SdFile.makeDir called. SdFile path = NULL.");
 	return false;
 }
 
@@ -213,7 +213,7 @@ uint8_t SdFile::open(SdFile* dir, const char* fname, uint8_t mode)
 {
 	char buff[64];
 	sprintf_s(buff, "SdFile.open called. fname=%s mode=%u", fname, mode);
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	return true;
 }
 
@@ -232,7 +232,7 @@ uint8_t SdFile::write(char c)
 {
 	char buff[32];
 	sprintf_s(buff, "SdFile.write called. c=%c", c);
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	return true;
 }
 
@@ -246,7 +246,7 @@ uint8_t SdFile::write(const char* str)
 {
 	char buff[128];
 	sprintf_s(buff, "SdFile.write called: %s", str);
-	logevent(Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, buff);
 	return true;
 }
 
@@ -256,7 +256,7 @@ uint8_t SdFile::write(const char* str)
 */
 void SdFile::sync(void)
 {
-	logevent(Level::INFO, "SdFile.sync called.");
+	vard::logevent(vard::Level::INFO, "SdFile.sync called.");
 }
 
 /**
@@ -265,5 +265,5 @@ void SdFile::sync(void)
 */
 void SdFile::close(void)
 {
-	logevent(Level::INFO, "SdFile.close called.");
+	vard::logevent(vard::Level::INFO, "SdFile.close called.");
 }

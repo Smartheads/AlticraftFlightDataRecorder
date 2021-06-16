@@ -42,7 +42,7 @@ int wmain(void)
     // Setup virtual arduino
     SYSTEMTIME systime;
     GetLocalTime(&systime);
-    sysbasetime = systime.wHour * 3600000 + systime.wMinute * 60000 + systime.wSecond * 1000 + systime.wMilliseconds;
+    vard::sysbasetime = systime.wHour * 3600000 + systime.wMinute * 60000 + systime.wSecond * 1000 + systime.wMilliseconds;
 
     // Start the program
     setup();

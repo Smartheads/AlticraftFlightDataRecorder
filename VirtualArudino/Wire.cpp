@@ -27,22 +27,22 @@
 
 #include "Wire.h"
 
-HardwareWire Wire;
+vard::HardwareWire Wire;
 
 /**
-* Contructor for the class HardwareWire.
+* Contructor for the class vard::HardwareWire.
 *
 */
-HardwareWire::HardwareWire(void)
+vard::HardwareWire::HardwareWire(void)
 {
 
 }
 
 /**
-* Destructor for class HardwareWire.
+* Destructor for class vard::HardwareWire.
 *
 */
-HardwareWire::~HardwareWire(void)
+vard::HardwareWire::~HardwareWire(void)
 {
 	if (readbuffer != NULL)
 	{
@@ -55,16 +55,16 @@ HardwareWire::~HardwareWire(void)
 *
 * @return
 */
-bool HardwareWire::begin(void)
+bool vard::HardwareWire::begin(void)
 {
 	if (this->isavailable)
 	{
 		this->isconnected = true;
-		logevent(Level::INFO, "Wire.begin called. Successful connection.");
+		vard::logevent(Level::INFO, "Wire.begin called. Successful connection.");
 		return true;
 	}
 
-	logevent(Level::ERR, "Wire.begin called. Connection failed.");
+	vard::logevent(Level::ERR, "Wire.begin called. Connection failed.");
 	return false;
 }
 
@@ -73,18 +73,18 @@ bool HardwareWire::begin(void)
 *
 * @param addr Address to send data to.
 */
-bool HardwareWire::beginTransmission(uint8_t addr)
+bool vard::HardwareWire::beginTransmission(uint8_t addr)
 {
 	if (this->isconnected)
 	{
 		char buff[64];
 		sprintf_s(buff, 64, "Wire.beginTransmission called. address=%u", addr);
-		logevent(Level::INFO, buff);
+		vard::logevent(Level::INFO, buff);
 		this->targetaddr = addr;
 		return true;
 	}
 
-	logevent(Level::ERR, "Wire.beginTransmision called. Connection not open.");
+	vard::logevent(Level::ERR, "Wire.beginTransmision called. Connection not open.");
 	return false;
 }
 
@@ -94,17 +94,17 @@ bool HardwareWire::beginTransmission(uint8_t addr)
 * 
 * @param val Byte to send
 */
-bool HardwareWire::write(uint8_t val)
+bool vard::HardwareWire::write(uint8_t val)
 {
 	if (this->targetaddr)
 	{
 		char buff[64];
 		sprintf_s(buff, 64, "Wire.write called. address=%u value=%u", this->targetaddr, val);
-		logevent(Level::INFO, buff);
+		vard::logevent(Level::INFO, buff);
 		return true;
 	}
 
-	logevent(Level::ERR, "Wire.write called. Connection not open.");
+	vard::logevent(Level::ERR, "Wire.write called. Connection not open.");
 	return false;
 }
 
@@ -115,7 +115,7 @@ bool HardwareWire::write(uint8_t val)
 * @param size Size of buffer.
 * @return True if successful.
 */
-bool HardwareWire::write(uint8_t* buff, uint8_t size)
+bool vard::HardwareWire::write(uint8_t* buff, uint8_t size)
 {
 	if (this->targetaddr)
 	{
@@ -127,7 +127,7 @@ bool HardwareWire::write(uint8_t* buff, uint8_t size)
 		return true;
 	}
 
-	logevent(Level::ERR, "Wire.write called. Connection not open.");
+	vard::logevent(Level::ERR, "Wire.write called. Connection not open.");
 	return false;
 }
 
@@ -135,7 +135,7 @@ bool HardwareWire::write(uint8_t* buff, uint8_t size)
 * Closes a transmission sequence.
 *
 */
-bool HardwareWire::endTransmission(void)
+bool vard::HardwareWire::endTransmission(void)
 {
 	this->targetaddr = 0;
 	return true;
@@ -147,7 +147,7 @@ bool HardwareWire::endTransmission(void)
 * @param addr Address to read from.
 * @param size Number of bytes to read into buffer.
 */
-bool HardwareWire::requestFrom(uint8_t addr, uint8_t size)
+bool vard::HardwareWire::requestFrom(uint8_t addr, uint8_t size)
 {
 	if (this->isconnected)
 	{
@@ -169,7 +169,7 @@ bool HardwareWire::requestFrom(uint8_t addr, uint8_t size)
 		return true;
 	}
 
-	logevent(Level::ERR, "Wire.requestFrom called. Connection not open.");
+	vard::logevent(Level::ERR, "Wire.requestFrom called. Connection not open.");
 	return false;
 }
 
@@ -178,7 +178,7 @@ bool HardwareWire::requestFrom(uint8_t addr, uint8_t size)
 * 
 * @return A byte from the buffer.
 */
-uint8_t HardwareWire::read(void)
+uint8_t vard::HardwareWire::read(void)
 {
 	if (this->readbuffer != NULL)
 	{

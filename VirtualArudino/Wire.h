@@ -31,8 +31,10 @@
 
 #include "VirtualArduino.h"
 
-class HardwareWire
+namespace vard
 {
+	class HardwareWire
+	{
 	public:
 		HardwareWire(void);
 		~HardwareWire(void);
@@ -52,8 +54,9 @@ class HardwareWire
 		uint8_t targetaddr = 0;
 		unsigned int pos = 0, buffsize = 0;
 		uint8_t* readbuffer = NULL;
-};
+	};
+}
 
-extern HardwareWire Wire;
+extern vard::HardwareWire Wire;
 
 #endif
