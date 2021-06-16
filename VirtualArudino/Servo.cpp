@@ -45,3 +45,28 @@ Servo::~Servo(void)
 {
 
 }
+
+/**
+*   Attaches a pin to virtual servo configuration. 
+* 
+*   @param pin PWM pin attached to servo.
+*/
+uint8_t Servo::attach(unsigned int pin)
+{
+    char buff[64];
+    sprintf_s(buff, 64, "Servo.attach called. pin=%u", pin);
+    logevent(Level::INFO, buff);
+    return true;
+}
+
+/**
+*   Moves servo armature to specified position. 
+* 
+* @param pos Position to move servo armature to.
+*/
+void Servo::write(int pos)
+{
+    char buff[64];
+    sprintf_s(buff, 64, "Servo.write called. pos=%d", pos);
+    logevent(Level::INFO, buff);
+}

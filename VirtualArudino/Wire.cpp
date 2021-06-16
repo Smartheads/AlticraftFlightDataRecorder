@@ -27,6 +27,8 @@
 
 #include "Wire.h"
 
+HardwareWire Wire;
+
 /**
 * Contructor for the class HardwareWire.
 *

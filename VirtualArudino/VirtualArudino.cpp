@@ -27,6 +27,65 @@
 
 #include "VirtualArduino.h"
 
+std::list<Interrupt> intregistry;
+std::map<uint8_t, PinModes> pinregistry;
+HardwareSerial Serial;
+unsigned long sysbasetime;
+bool allowinterrupts = true;
+
+/**
+* Disable interrupts. 
+* 
+*/
+void noInterrupts(void)
+{
+	allowinterrupts = false;
+}
+
+/**
+* Allow interrupts.
+*
+*/
+void interrupts(void)
+{
+	allowinterrupts = true;
+}
+
+/**
+* Attach a pin with specific mode to interrupt ISR
+*	routine.
+* 
+* @param interrupt Number of interrupt
+* @param ISR Pointer to function to execute on interrupt
+* @param mode Interrupt mode, LOW, CHANGE, RISING, FALLING.
+*/
+void attachInterrupt(int interrupt, void (*ISR)(void), InterruptMode mode)
+{
+	Interrupt i = Interrupt();
+	i.number = interrupt;
+	i.ISR = ISR;
+	i.mode = mode;
+	intregistry.push_back(i);
+}
+
+/**
+* Detach interrupt. Will effectively disable
+*  the interrupt.
+*
+* @param interrupt Number of interrupt to detach.
+*/
+void detachInterrupt(int interrupt)
+{
+	for (std::list<Interrupt>::iterator i = intregistry.begin(); i != intregistry.end(); ++i)
+	{
+		if ((*i).number == interrupt)
+		{
+			intregistry.erase(i);
+			break;
+		}
+	}
+}
+
 /*
 * Logs an event to the standard output.
 *
@@ -116,8 +175,19 @@ void delayMicroseconds(unsigned long micros)
 * @param pin Number of pin to configure.
 * @param mode Configuration mode.
 */
-void pinMode(uint8_t pin, uint8_t mode)
+void pinMode(uint8_t pin, PinModes mode)
 {
+	// Register pin
+	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
+	if (it == pinregistry.end())
+	{
+		pinregistry.emplace(pin, mode);
+	}
+	else
+	{
+		pinregistry.at(pin) = mode;
+	}
+
 	switch (mode)
 	{
 		char buff[64];
@@ -148,22 +218,38 @@ void pinMode(uint8_t pin, uint8_t mode)
 void digitalWrite(uint8_t pin, OutputLevel level)
 {
 	char buff[64];
-	switch (level)
+
+	// Check registry for pin
+	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
+	if (it == pinregistry.end())
 	{
+		sprintf_s(buff, 64, "digitalWrite called. Pin not registered. pin=%u", pin);
+		logevent(Level::ERR, buff);
+	}
+	else if (pinregistry.at(pin) == PinModes::OUTPUT)
+	{
+		switch (level)
+		{
 		case LOW:
 			sprintf_s(buff, 64, "digitalWrite called. pin=%u value=LOW", pin);
 			logevent(Level::INFO, buff);
-		break;
+			break;
 
 		case HIGH:
 			sprintf_s(buff, 64, "digitalWrite called. pin=%u value=HIGH", pin);
 			logevent(Level::INFO, buff);
-		break;
+			break;
 
 		default:
 			sprintf_s(buff, 64, "digitalWrite called. pin=%u value=undefined", pin);
 			logevent(Level::ERR, buff);
-		break;
+			break;
+		}
+	}
+	else
+	{
+		sprintf_s(buff, 64, "digitalWrite called. Pin not set for OUTPUT. pin=%u", pin);
+		logevent(Level::ERR, buff);
 	}
 }
 
@@ -174,7 +260,27 @@ void digitalWrite(uint8_t pin, OutputLevel level)
 */
 OutputLevel digitalRead(uint8_t pin)
 {
-	return LOW;
+	char buff[64];
+
+	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
+	if (it == pinregistry.end())
+	{
+		sprintf_s(buff, 64, "digitalRead called. Pin not registered. pin=%u", pin);
+		logevent(Level::ERR, buff);
+	}
+	else if (pinregistry.at(pin) == PinModes::INPUT || pinregistry.at(pin) == PinModes::INPUT_PULLUP)
+	{
+		sprintf_s(buff, 64, "digitalRead called. pin=%u", pin);
+		logevent(Level::INFO, buff);
+
+		return OutputLevel::LOW;
+	}
+	else
+	{
+		sprintf_s(buff, 64, "digitalRead called. Pin not set for INPUT. pin=%u", pin);
+		logevent(Level::ERR, buff);
+	}
+	return OutputLevel::LOW;
 }
 
 /**
@@ -186,8 +292,24 @@ OutputLevel digitalRead(uint8_t pin)
 void analogWrite(uint8_t pin, uint16_t value)
 {
 	char buff[64];
-	sprintf_s(buff, 64, "analogWrite called. pin=%u value=%u", pin, value);
-	logevent(Level::INFO, buff);
+
+	// Check registry for pin
+	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
+	if (it == pinregistry.end())
+	{
+		sprintf_s(buff, 64, "analogWrite called. Pin not registered. pin=%u", pin);
+		logevent(Level::ERR, buff);
+	}
+	else if (pinregistry.at(pin) == PinModes::OUTPUT)
+	{
+		sprintf_s(buff, 64, "analogWrite called. pin=%u value=%u", pin, value);
+		logevent(Level::INFO, buff);
+	}
+	else
+	{
+		sprintf_s(buff, 64, "analogWrite called. Pin not set for OUTPUT. pin=%u", pin);
+		logevent(Level::ERR, buff);
+	}
 }
 
 /**
@@ -209,6 +331,32 @@ unsigned long pulseIn(uint8_t pin, OutputLevel level)
 	unsigned long start = millis();
 	while (digitalRead(pin) == level);
 	return millis() - start;
+}
+
+/**
+*	Reads a word from flash memory. 
+* 
+*	@param cstr Pointer to a cstring saved in flash memory.
+*/
+const char* pgm_read_word(const char* const* cstr)
+{
+	return *cstr;
+}
+
+/**
+*	Copies the string from src to dest. 
+* 
+*	@param dest Const char array to write to.
+*	@param src C string to copy.
+*/
+void strcpy_P(char* dest, const char* src)
+{
+	int i = 0;
+	while (src[i] != '\0')
+	{
+		dest[i] = src[i++];
+	}
+	dest[i] = '\0';
 }
 
 /**
@@ -234,12 +382,34 @@ String::String(const char* cstr)
 * Constructor for class String.
 * 
 * @param num Number to create String out of.
+* @param r Radix of number.
 */
-String::String(int num)
+String::String(int num, Radix r)
 {
-	char buff[32];
-	sprintf_s(buff, 32, "%d", num);
-	this->str = std::string(buff);
+	switch (r)
+	{
+		case Radix::HEX:
+		{ // local scope
+			char buff[32];
+			sprintf_s(buff, 32, "%x", num);
+			this->str = std::string(buff);
+		}
+		break;
+
+		case Radix::OCT:
+		{ // local scope
+			char buff[32];
+			sprintf_s(buff, 32, "%o", num);
+			this->str = std::string(buff);
+		}
+		break;
+
+		default:
+			char buff[32];
+			sprintf_s(buff, 32, "%d", num);
+			this->str = std::string(buff);
+		break;
+	}
 }
 
 /**
@@ -249,7 +419,7 @@ String::String(int num)
 */
 unsigned int String::length(void)
 {
-	return str.length();
+	return (unsigned int) str.length();
 }
 
 /**
@@ -261,7 +431,7 @@ unsigned int String::length(void)
 void String::toCharArray(char* buff, unsigned int size)
 {
 	std::string subs = this->str.substr(0, size-2); // Leave room for \0
-	for (int i = 0; i < size; i++)
+	for (unsigned int i = 0; i < size; i++)
 	{
 		buff[i] = subs.at(i);
 	}
@@ -278,10 +448,40 @@ const char* String::c_str(void)
 	return this->str.c_str();
 }
 
+/**
+*	Returns a character at a given index in the string. 
+* 
+*	@param i Index of character to return.
+*/
+char String::charAt(unsigned int i)
+{
+	return str[i];
+}
+
 String String::operator+(String b)
 {
-	char* buff = (char*)malloc(this->str.length() + b.length());
+	char* buff = new char[this->str.length() + b.length() + 1];
+	for (unsigned int i = 0; i < str.length(); i++)
+	{
+		buff[i] = str[i];
+	}
 
+	for (unsigned int i = 0; i < b.length(); i++)
+	{
+		buff[i + str.length()] = b.charAt(i);
+	}
+
+	buff[str.length() + b.length()] = '\0';
+
+	String result = String(buff);
+	delete[] buff;
+
+	return result;
+}
+
+String String::operator+(const char* b)
+{
+	return operator+(String(b));
 }
 
 /**
@@ -300,9 +500,7 @@ std::string String::std_string(void)
 */
 HardwareSerial::HardwareSerial(void)
 {
-	this->isavailable = true;
-	this->isconnected = false;
-	this->readbuffer = NULL;
+	
 }
 
 /**
@@ -530,7 +728,7 @@ void HardwareSerial::write(uint8_t* buff, unsigned int size)
 {
 	if (this->isconnected)
 	{
-		for (int i = 0; i < size; i++)
+		for (unsigned int i = 0; i < size; i++)
 		{
 			this->write(buff[i]);
 		}
@@ -579,7 +777,7 @@ void HardwareSerial::readBytes(uint8_t* buff, unsigned int len)
 {
 	if (this->isconnected)
 	{
-		for (int i = 0; i < len; i++)
+		for (unsigned int i = 0; i < len; i++)
 		{
 			buff[i] = this->read();
 		}
@@ -601,7 +799,7 @@ String HardwareSerial::readString(void)
 	{
 		unsigned int len = this->buffsize - this->pos;
 		char* word = (char*)malloc(static_cast<size_t>(len) + 1);
-		for (int i = this->pos; i < this->buffsize; i++)
+		for (unsigned int i = this->pos; i < this->buffsize; i++)
 		{
 			word[i - this->pos] = (char) this->read();
 		}

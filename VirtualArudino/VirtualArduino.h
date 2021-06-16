@@ -32,6 +32,8 @@
 
 #include <stdint.h>
 #include <string>
+#include <list>
+#include <map>
 
 #define INPUT WININPUT
 #include <windows.h>
@@ -40,14 +42,34 @@
 #include <synchapi.h>
 #undef INPUT
 
+// Select microcontroller here
+#define __AVR_ATmega328P__
+// __AVR_ATmega168__ , __AVR_ATmega8__ , __AVR_ATmega1280__
+// __AVR_ATmega2560__ , __SAM3X8E__
+
 #define PI ((double) 3.141592654)
 
 typedef uint8_t byte;
 
 enum class Level { FATAL, ERR, SEVERE, WARNING, INFO };
 enum PinModes { INPUT, OUTPUT, INPUT_PULLUP };
-enum OutputLevel {LOW, HIGH};
-enum Radix {DEC, OCT, HEX};
+enum OutputLevel { LOW, HIGH };
+enum class InterruptMode { LOW, CHANGE, RISING, FALLING }; // This will cause issues in the future with sketches using interrupts.
+enum Radix { DEC, OCT, HEX };
+
+typedef struct interrupt
+{
+	int number;
+	void (*ISR)(void);
+	InterruptMode mode;
+} Interrupt;
+
+extern std::list<Interrupt> intregistry;
+extern bool allowinterrupts;
+void noInterrupts(void);
+void interrupts(void);
+void attachInterrupt(int, void (*)(void), InterruptMode);
+void detachInterrupt(int);
 
 void logevent(Level, const char*);
 
@@ -59,27 +81,34 @@ extern unsigned long sysbasetime;
 unsigned long micros(void);
 void delay(unsigned long);
 void delayMicroseconds(unsigned long);
-void pinMode(uint8_t, uint8_t);
+
+extern std::map<uint8_t, PinModes> pinregistry;
+void pinMode(uint8_t, PinModes);
 void digitalWrite(uint8_t, OutputLevel);
 OutputLevel digitalRead(uint8_t);
 void analogWrite(uint8_t, uint16_t);
 unsigned long pulseIn(uint8_t, OutputLevel);
 
+const char* pgm_read_word(const char* const*);
+void strcpy_P(char*, const char*);
+
 class String
 {
-	public:
-		String();
-		String(const char*);
-		String(int);
+public:
+	String();
+	String(const char*);
+	String(int, Radix=Radix::DEC);
 
-		unsigned int length(void);
-		void toCharArray(char*, unsigned int);
-		const char* c_str(void);
-		String operator+(String);
-		std::string std_string(void);
+	unsigned int length(void);
+	void toCharArray(char*, unsigned int);
+	const char* c_str(void);
+	char charAt(unsigned int);
+	String operator+(String);
+	String operator+(const char*);
+	std::string std_string(void);
 
-	private:
-		std::string str;
+private:
+	std::string str;
 };
 
 class HardwareSerial
@@ -107,9 +136,9 @@ public:
 	void setTimeout(unsigned long);
 
 private:
-	bool isavailable, isconnected;
+	bool isavailable = true, isconnected = false;
 	unsigned int buffsize = 0, pos = 0;
-	uint8_t* readbuffer;
+	uint8_t* readbuffer = NULL;
 };
 
 extern HardwareSerial Serial;

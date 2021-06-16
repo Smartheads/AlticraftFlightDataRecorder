@@ -28,16 +28,10 @@
 *   This program is designed to test new versions of the Alticraft Flight Data
 *   Recorder software before deploying to hardware solutions.
 */
-#include <stdio.h>
-#include <VirtualArduino.h>
-
 #include "AlticraftFDR.h"
 //#include "AlticraftTest.h"
-
-HardwareSerial Serial;
-HardwareWire Wire;
-unsigned long sysbasetime;
-
+#include <VirtualArduino.h>
+#include <stdio.h>
 
 int wmain(void)
 {
@@ -49,10 +43,6 @@ int wmain(void)
     SYSTEMTIME systime;
     GetLocalTime(&systime);
     sysbasetime = systime.wHour * 3600000 + systime.wMinute * 60000 + systime.wSecond * 1000 + systime.wMilliseconds;
-
-    /*Serial.begin(115200);
-    Serial.println("Hello world!");
-    Serial.print("Hello 2x!");*/
 
     // Start the program
     setup();

@@ -52,3 +52,13 @@ AlticraftRuntimeSimulator/.vs/AlticraftRuntimeSimulator/v16/.suo
 *.db-shm
 *.db-wal
 *.recipe
+*.sarif
+*.xml
+AlticraftRuntimeSimulator/x64/Debug/CodeAnalysisResultManifest.txt
+*.ilk
+*.lastcodeanalysissucceeded
+*.ilk
+VirtualArudino/x64/Debug/CodeAnalysisResultManifest.txt
+WinSRL/x64/Debug/CodeAnalysisResultManifest.txt
+*.ilk
+AlticraftRuntimeSimulator/x64/Debug/AlticraftRuntimeSimulator.ilk

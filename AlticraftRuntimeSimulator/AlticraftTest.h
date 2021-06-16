@@ -6,7 +6,7 @@
 	extern HardwareSerial Serial;
 #endif
 
-void setup(void);
-void loop(void);
+ //void setup(void);
+ //void loop(void);
 
 #endif

@@ -29,11 +29,16 @@
 #ifndef __SERVO_H__
 #define __SERVO_H__
 
+#include "VirtualArduino.h"
+
 class Servo
 {
 	public:
 		Servo(void);
 		~Servo(void);
+
+		uint8_t attach(unsigned int);
+		void write(int);
 	private:
 
 };
