@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright (c) 2020 Robert Hutter
+* Copyright (c) 2021 Robert Hutter
 * 
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -44,14 +44,11 @@
 
 namespace SRL
 {
-
-	typedef unsigned char byte;
-
 	typedef struct
 	{
-		byte red;
-		byte green;
-		byte blue;
+		uint8_t red;
+		uint8_t green;
+		uint8_t blue;
 	} color;
 	
 	bool compareColor(color a, color b);
@@ -62,7 +59,7 @@ namespace SRL
 			rgbled(uint8_t redpin, uint8_t greedpin, uint8_t bluepin);
 			~rgbled();
 		
-			void setColor(byte red, byte green, byte blue);
+			void setColor(uint8_t red, uint8_t green, uint8_t blue);
 			void setColor(color ledcol);
 			color getColor(void);
 		
@@ -72,11 +69,9 @@ namespace SRL
 			bool getState(void);
 		
 		private:
-			color* const ledcol = new color;
-			uint8_t* const redpin = new uint8_t;
-			uint8_t* const greenpin = new uint8_t;
-			uint8_t* const bluepin = new uint8_t;
-			bool* const ledstate = new bool;
+			color ledcol;
+			uint8_t redpin, greenpin, bluepin;
+			bool ledstate;
 	};
 }
 

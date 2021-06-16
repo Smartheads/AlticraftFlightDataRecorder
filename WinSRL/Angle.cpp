@@ -48,11 +48,11 @@ void SRL::Angle::setAngle(float size)
 {
 	if (size > 0.0f)
 	{
-		this->size = fmod(size, vollWinkel);
+		this->size = (float) fmod(size, vollWinkel);
 	}
 	else if (size < 0.0f)
 	{
-		this->size = vollWinkel - (fmod(fabs(size), vollWinkel));
+		this->size = (float) (vollWinkel - (fmod(fabs(size), vollWinkel)));
 	}
 	else
 	{

@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright (c) 2018 Robert Hutter
+* Copyright (c) 2021 Robert Hutter
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -125,49 +125,58 @@ void SRL::Accelerometer::calcAccelOffsets(uint8_t orientation, bool console, uns
 
 /**
 *	Returns the median of raw accelerometer readings on the x-axis.
+*	Note: untested since last change.
 *
 * @param iterations The number of readings to take.
 */
 int16_t SRL::Accelerometer::getRawAccelXMedian(unsigned int iterations)
 {
-	int16_t samples[iterations];
+	int16_t* samples = new int16_t[iterations];
 	for (unsigned int i = 0; i < iterations; i++)
 	{
 		samples[i] = getRawAccelX();
 	}
 
-	return getMedian<int16_t>(iterations, samples);
+	int16_t result = getMedian<int16_t>(iterations, samples);
+	delete[] samples;
+	return result;
 }
 
 /**
 *	Returns the median of raw accelerometer readings on the y-axis.
+*	Note: untested since last change.
 *
 * @param iterations The number of readings to take.
 */
 int16_t SRL::Accelerometer::getRawAccelYMedian(unsigned int iterations)
 {
-	int16_t samples[iterations];
+	int16_t* samples = new int16_t[iterations];
 	for (unsigned int i = 0; i < iterations; i++)
 	{
 		samples[i] = getRawAccelY();
 	}
 
-	return getMedian<int16_t>(iterations, samples);
+	int16_t result = getMedian<int16_t>(iterations, samples);
+	delete[] samples;
+	return result;
 }
 /**
 *	Returns the median of raw accelerometer readings on the z-axis.
+*	Note: untested since last change.
 *
 * @param iterations The number of readings to take.
 */
 int16_t SRL::Accelerometer::getRawAccelZMedian(unsigned int iterations)
 {
-	int16_t samples[iterations];
+	int16_t* samples = new int16_t[iterations];
 	for (unsigned int i = 0; i < iterations; i++)
 	{
 		samples[i] = getRawAccelZ();
 	}
 
-	return getMedian<int16_t>(iterations, samples);
+	int16_t result = getMedian<int16_t>(iterations, samples);
+	delete[] samples;
+	return result;
 }
 
 double SRL::Accelerometer::getAccelXMedian(unsigned int iterations)

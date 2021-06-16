@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright (c) 2018 Robert Hutter
+* Copyright (c) 2021 Robert Hutter
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -187,52 +187,62 @@ double SRL::BMP280::getAltitude(void)
 
 /**
 *	Returns the median of a few pressure measurements.
+*	Note: untested since last change.
 *
 *	@param samples The amount of measurements to take.
 *	@return Median of pressure measurements.
 */
 double SRL::BMP280::getMedianPressure(unsigned int samples)
 {
-	double readings[samples];
+	double* readings = new double[samples];
 	for (unsigned int i = 0; i < samples; i++)
 	{
 		readings[i] = getPressure();
 	}
 	
-	return getMedian<double>(samples, readings);
+	double result = getMedian<double>(samples, readings);
+	delete[] readings;
+	return result;
 }
 
 /**
 *	Returns the median of a few temperature measurements.
+*	Note: untested since last change.
 *
 *	@param samples The amount of measurements to take.
 *	@return Median of temperature measurements.
 */
 double SRL::BMP280::getMedianTemperature(unsigned int samples)
 {
-	double readings[samples];
+	double* readings = new double[samples];
 	for (unsigned int i = 0; i < samples; i++)
 	{
 		readings[i] = getTemperature();
 	}
 	
-	return getMedian<double>(samples, readings);
+	double result = getMedian<double>(samples, readings);
+	delete[] readings;
+	return result;
 }
 
 /**
 *	Returns the median of a few altitude measurements.
+*	Note: untested since last change.
 *
 *	@param samples The amount of measurements to take.
 *	@return Median of temperature measurements
 */
 double SRL::BMP280::getMedianAltitude(unsigned int samples)
 {
-	double readings[samples];
+	double* readings = new double[samples];
 	for (unsigned int i = 0; i < samples; i++)
 	{
 		readings[samples] = getAltitude();
 	}
-	return getMedian<double>(samples, readings);
+	
+	double result = getMedian<double>(samples, readings);
+	delete[] readings;
+	return result;
 }
 
 /**

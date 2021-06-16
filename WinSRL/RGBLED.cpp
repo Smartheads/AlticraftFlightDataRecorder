@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright (c) 2020 Robert Hutter
+* Copyright (c) 2021 Robert Hutter
 * 
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -48,9 +48,9 @@ bool SRL::compareColor(color a, color b)
 */
 SRL::rgbled::rgbled(uint8_t redpin, uint8_t greenpin, uint8_t bluepin) : Component(RGBLED_COMPONENT_NAME, Component::LIGHT)
 {
-	*this->redpin = redpin;
-	*this->greenpin = greenpin;
-	*this->bluepin = bluepin;
+	this->redpin = redpin;
+	this->greenpin = greenpin;
+	this->bluepin = bluepin;
 	
 	pinMode(redpin, OUTPUT);
 	pinMode(greenpin, OUTPUT);
@@ -66,10 +66,7 @@ SRL::rgbled::rgbled(uint8_t redpin, uint8_t greenpin, uint8_t bluepin) : Compone
 */
 SRL::rgbled::~rgbled()
 {
-	delete ledcol;
-	delete redpin;
-	delete greenpin;
-	delete bluepin;
+	
 }
 
 /**
@@ -80,7 +77,7 @@ SRL::rgbled::~rgbled()
 *	@param blue
 *
 */
-void SRL::rgbled::setColor(byte red, byte green, byte blue)
+void SRL::rgbled::setColor(uint8_t red, uint8_t green, uint8_t blue)
 {
 	setColor(color {red, green, blue});
 }
@@ -91,7 +88,7 @@ void SRL::rgbled::setColor(byte red, byte green, byte blue)
 */
 SRL::color SRL::rgbled::getColor(void)
 {
-	return *this->ledcol;
+	return this->ledcol;
 }
 
 /**
@@ -101,13 +98,13 @@ SRL::color SRL::rgbled::getColor(void)
 */
 void SRL::rgbled::setColor(color ledcol)
 {
-	(*this->ledcol).red = ledcol.red;
-	(*this->ledcol).green = ledcol.green;
-	(*this->ledcol).blue = ledcol.blue;
+	this->ledcol.red = ledcol.red;
+	this->ledcol.green = ledcol.green;
+	this->ledcol.blue = ledcol.blue;
 	
-	analogWrite(*redpin, ledcol.red);
-	analogWrite(*greenpin, ledcol.green);
-	analogWrite(*bluepin, ledcol.blue);
+	analogWrite(redpin, ledcol.red);
+	analogWrite(greenpin, ledcol.green);
+	analogWrite(bluepin, ledcol.blue);
 }
 
 /**
@@ -116,10 +113,10 @@ void SRL::rgbled::setColor(color ledcol)
 */
 void SRL::rgbled::turnOff(void)
 {
-	*ledstate = OFF;
-	digitalWrite(*redpin, LOW);
-	digitalWrite(*greenpin, LOW);
-	digitalWrite(*bluepin, LOW);
+	ledstate = OFF;
+	digitalWrite(redpin, LOW);
+	digitalWrite(greenpin, LOW);
+	digitalWrite(bluepin, LOW);
 }
 
 /**
@@ -128,8 +125,8 @@ void SRL::rgbled::turnOff(void)
 */
 void SRL::rgbled::turnOn(void)
 {
-	*ledstate = ON;
-	setColor(*ledcol);
+	ledstate = ON;
+	setColor(ledcol);
 }
 
 /**
@@ -138,7 +135,7 @@ void SRL::rgbled::turnOn(void)
 */
 bool SRL::rgbled::getState(void)
 {
-	return *ledstate;
+	return ledstate;
 }
 
 /**
@@ -147,7 +144,7 @@ bool SRL::rgbled::getState(void)
 */
 void SRL::rgbled::setState(bool state)
 {
-	*ledstate = state;
+	ledstate = state;
 	if (state)
 		turnOn();
 	else

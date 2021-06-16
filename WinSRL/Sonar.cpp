@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright (c) 2018 Robert Hutter
+* Copyright (c) 2021 Robert Hutter
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -75,6 +75,7 @@ double SRL::Sonar::convertMm(unsigned long us)
 /**
 * Pings the objects in front of the sensor and returns the reading's median.
 * It will discard any really off readings.
+* Note: untested since last change.
 *
 * @param interations The number of measurments to take.
 * @return
@@ -82,7 +83,8 @@ double SRL::Sonar::convertMm(unsigned long us)
 */
 unsigned long SRL::Sonar::pingMedian(unsigned int interations)
 {
-  unsigned long samples[interations], last, t;
+  unsigned long last, t;
+  unsigned long* samples = new unsigned long[interations];
   unsigned int j, i = 0;
   samples[0] = NO_ECHO;
 
@@ -118,7 +120,10 @@ unsigned long SRL::Sonar::pingMedian(unsigned int interations)
       delay((PING_MEDIAN_DELAY + t - micros()) / 1000); // Delay between readings
     }
   }
-  return samples[interations >> 1];
+
+  unsigned long result = samples[interations >> 1];
+  delete[] samples;
+  return result;
 }
 
 /**

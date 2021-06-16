@@ -36,6 +36,7 @@ SRL::I2CDevice::I2CDevice(uint8_t address)
 
 /**
 *	Writes bytes from a byte array to the I2C device.
+*	Note: untested since last change.
 *
 * @param reg The register to write to.
 * @param bytec The number of bytes to write.
@@ -48,7 +49,7 @@ uint8_t SRL::I2CDevice::writeBytes(uint8_t reg, uint8_t bytec, byte* bytev, uint
 	Wire.beginTransmission(address);
 	Wire.write(reg);
 
-	byte data[bytec - start];
+	byte* data = new byte[bytec - start];
 
 	for (int i = start; i < bytec; i++)
 	{
@@ -58,6 +59,7 @@ uint8_t SRL::I2CDevice::writeBytes(uint8_t reg, uint8_t bytec, byte* bytev, uint
 	int x = Wire.write(data, bytec - start);
 	Wire.endTransmission();
 
+	delete[] data;
 	return (x == bytec - start) ? 0 : 1;
 }
 
