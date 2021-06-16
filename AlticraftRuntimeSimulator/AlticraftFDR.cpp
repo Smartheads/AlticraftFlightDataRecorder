@@ -28,6 +28,30 @@
 
 #include "AlticraftFDR.h"
 
+#ifdef DEBUG
+    char outBuffer[135];
+#endif
+
+#if defined(LAUNCH_LOG_STAGE) || defined(ONLY_LAUNCH_AND_LOG)
+#include <Buzzer.h>
+    SRL::Buzzer* buzzer;
+#endif
+#ifdef LAUNCH_LOG_STAGE
+#include <Servo.h>
+    Servo stageservo;
+#endif
+
+SRL::I2CDevice* bmp;
+SRL::I2CDevice* mpu;
+SRL::rgbled* rgb;
+Sd2Card* sdcard;
+SdVolume* sdvolume;
+SdFile* logfile;
+SdFile* debugFile;
+SdFile* sdfilemanager;
+
+unsigned long liftoffat = 0;
+
 /**
 * Execution starts here.
 *
@@ -87,33 +111,36 @@ void setup()
   #ifdef DEBUG
     writeOutDebugMessage(2);
   #endif
-  rgb.setColor(BLUE);
+  rgb = new SRL::rgbled(RED_PIN, GREEN_PIN, BLUE_PIN);
+  rgb->setColor(BLUE);
 
   // Initialize MPU9250
   #ifdef DEBUG
     writeOutDebugMessage(32);
   #endif
+  mpu = new SRL::I2CDevice(MPU9250_ADDRESS);
   { // Local scope for gc and ac
     uint8_t gc = 0;
-    mpu.readBytes(MPU9250_GYRO_CONFIG, &gc, 1);
+    mpu->readBytes(MPU9250_GYRO_CONFIG, &gc, 1);
     gc = ((uint8_t)0xE7) & gc; // 11100111 mask
     gc = gc | ((uint8_t)GYRO_SENSITIVITY);
-    mpu.writeByte(MPU9250_GYRO_CONFIG, gc);
+    mpu->writeByte(MPU9250_GYRO_CONFIG, gc);
     
     uint8_t ac = 0;
-    mpu.readBytes(MPU9250_ACCEL_CONFIG, &ac, 1);
+    mpu->readBytes(MPU9250_ACCEL_CONFIG, &ac, 1);
     ac = ((uint8_t)0xE7) & ac; // 11100111 mask
     ac = ac | ((uint8_t)ACCEL_SENSITIVITY);
-    mpu.writeByte(MPU9250_ACCEL_CONFIG, ac);
+    mpu->writeByte(MPU9250_ACCEL_CONFIG, ac);
   }
 
   // Initialize BMP280
   #ifdef DEBUG
     writeOutDebugMessage(33);
   #endif
+  bmp = new SRL::I2CDevice(BMP280_ADDRESS);
   { // Local scope for bmpSetting
     uint8_t bmpSetting = (((uint8_t)TEMPERATURE_OVERSAMPLING) << 5) | (((uint8_t)PRESSURE_OVERSAMPLING) << 2) | ((uint8_t)BMP280_POWER_MODE);
-    bmp.writeByte(BMP280_CTRL_MEAS, bmpSetting);
+    bmp->writeByte(BMP280_CTRL_MEAS, bmpSetting);
   }
   
   // Initialize components needed for launch
@@ -154,63 +181,67 @@ void setup()
   * 
   * OK only if sdtest == 0x0F (1111)
   */
-  uint8_t sdtest = sdcard.init(SPI_FULL_SPEED, SD_CHIP_SELECT);
+  sdcard = new Sd2Card;
+  uint8_t sdtest = sdcard->init(SPI_FULL_SPEED, SD_CHIP_SELECT);
 
   // Initialize volume if card checks out
   if (sdtest == 0x01)
   {
-    sdtest = (((uint8_t)sdvolume.init(&sdcard)) << 1) | sdtest;
+    sdvolume = new SdVolume;
+    sdtest = (((uint8_t)sdvolume->init(sdcard)) << 1) | sdtest;
 
     #ifdef DEBUG
       if(sdtest == 0x03) // Print information on sdvolume
       {
         writeOutDebugMessage(4);
-        writeOutDebugMessage(String(sdcard.type()));
+        writeOutDebugMessage(String(sdcard->type()));
         writeOutDebugMessage(11);
         
         writeOutDebugMessage(5);
-        writeOutDebugMessage(String(sdvolume.clusterCount()));
+        writeOutDebugMessage(String(sdvolume->clusterCount()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(6);
-        writeOutDebugMessage(String(sdvolume.blocksPerCluster()));
+        writeOutDebugMessage(String(sdvolume->blocksPerCluster()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(7);
-        writeOutDebugMessage(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount()));
+        writeOutDebugMessage(String(sdvolume->blocksPerCluster() * sdvolume->clusterCount()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(8);
-        writeOutDebugMessage(String(sdvolume.fatType()));
+        writeOutDebugMessage(String(sdvolume->fatType()));
         writeOutDebugMessage(11);
   
         writeOutDebugMessage(9);
-        writeOutDebugMessage(String(sdvolume.blocksPerCluster() * sdvolume.clusterCount() / 2));
+        writeOutDebugMessage(String(sdvolume->blocksPerCluster() * sdvolume->clusterCount() / 2));
         writeOutDebugMessage(10);
       }
     #endif
 
     // Create a new directory to log data into and open it
-    sdtest = (((uint8_t)sdfilemanager.openRoot(&sdvolume)) << 2) | sdtest;
+    sdfilemanager = new SdFile;
+    sdtest = (((uint8_t)sdfilemanager->openRoot(sdvolume)) << 2) | sdtest;
 
     if(sdtest == 0x07) // 0111
     {
       uint8_t num = 0;
-      const String dir = WORKSPACE_DIR_NAME;
+      String dir = WORKSPACE_DIR_NAME;
       String dirname = dir + String(num);
       bool success = false;
       while (!success)
       {
         SdFile sdf;
-        success = sdf.makeDir(&sdfilemanager, dirname.c_str());
+        success = sdf.makeDir(sdfilemanager, dirname.c_str());
         if (!success)
         {
           dirname = dir + String(++num); // Issue somewhere here
         }
       }
 
-      SdFile sdf;
-      sdtest = ((uint8_t)(sdf.open(&sdfilemanager, dirname.c_str(), O_READ)) << 3) | sdtest;
+      SdFile* sdf = new SdFile;
+      sdtest = ((uint8_t)(sdf->open(sdfilemanager, dirname.c_str(), O_READ)) << 3) | sdtest;
+      delete sdfilemanager;
       sdfilemanager = sdf;
     }
   }
@@ -252,7 +283,7 @@ void setup()
 
   // Test MPU9250, read device ID
   uint8_t mpuChipId = 0;
-  mpu.readBytes(MPU9250_WHO_AM_I, &mpuChipId, 1);
+  mpu->readBytes(MPU9250_WHO_AM_I, &mpuChipId, 1);
 
   #ifdef DEBUG
     if (mpuChipId != MPU9250_WHO_AM_I_VALUE)
@@ -263,7 +294,7 @@ void setup()
 
   // Test BMP280, read device ID
   uint8_t bmpChipId = 0;
-  bmp.readBytes(BMP280_CHIP_ID, &bmpChipId, 1);
+  bmp->readBytes(BMP280_CHIP_ID, &bmpChipId, 1);
 
   #ifdef DEBUG
     if (bmpChipId != BMP280_CHIP_ID_VALUE)
@@ -281,15 +312,16 @@ void setup()
       writeOutDebugMessage(34);
     #endif 
     
-    rgb.setColor(WHITE);
+    rgb->setColor(WHITE);
       
     // Wait forever (until the user reboots the system)
-    sdfilemanager.close();
+    sdfilemanager->close();
     for(;;){}
   }
 
   #ifdef DEBUG
-    debugFile.open(sdfilemanager, "debug.txt", O_CREAT | O_WRITE);
+    debugFile = new SdFile;
+    debugFile->open(sdfilemanager, "debug.txt", O_CREAT | O_WRITE);
     writeOutDebugMessage(14);
   #endif
   
@@ -298,7 +330,7 @@ void setup()
     #ifdef DEBUG
       writeOutDebugMessage(19);
     #endif
-    rgb.setColor(GREEN);
+    rgb->setColor(GREEN);
 
     bool cont = true;
     
@@ -320,9 +352,9 @@ void setup()
     } while(!cont);
     
     // Give feedback to the user (also gives time to release button)
-    rgb.setColor(RED);
+    rgb->setColor(RED);
     delay(LAUNCH_TIMEOUT);
-    rgb.setColor(GREEN);
+    rgb->setColor(GREEN);
 
     // Arm rocket, turn on launch warnings
     buzzer->turnOn();
@@ -364,7 +396,7 @@ void loop()
   #endif
     { // BMP280
       uint8_t bmpBuffer[6] = { 0 };
-      bmp.readBytes(BMP280_PRESS, bmpBuffer, 6);
+      bmp->readBytes(BMP280_PRESS, bmpBuffer, 6);
       
       int32_t adc_P = (int32_t) ((((uint32_t) (bmpBuffer[0])) << 12) | (((uint32_t) (bmpBuffer[1])) << 4) | ((uint32_t) bmpBuffer[2] >> 4));
       int32_t adc_T = (int32_t) ((((int32_t) (bmpBuffer[3])) << 12) | (((int32_t) (bmpBuffer[4])) << 4) | (((int32_t) (bmpBuffer[5])) >> 4));
@@ -415,7 +447,7 @@ void loop()
   
     { // MPU9250
       uint8_t mpuBuffer[14] = { 0 };
-      mpu.readBytes(MPU9250_ACCEL_DATA, mpuBuffer, 14);
+      mpu->readBytes(MPU9250_ACCEL_DATA, mpuBuffer, 14);
       
       int16_t rax, ray, raz, rgx, rgy, rgz;
       rax = (int16_t) (((int16_t)mpuBuffer[0] << 8) | ((int16_t)mpuBuffer[1]));
@@ -522,13 +554,13 @@ void loop()
       if (lcolorswitch + 500 <= millis())
       {
         lcolorswitch = millis();
-        if (compareColor(rgb.getColor(), GREEN))
+        if (compareColor(rgb->getColor(), GREEN))
         {
-          rgb.setColor(RED);
+          rgb->setColor(RED);
         }
         else
         {
-          rgb.setColor(GREEN);
+          rgb->setColor(GREEN);
         }
       }
 
@@ -538,7 +570,7 @@ void loop()
         // Ignite rocket (first stage)
         digitalWrite(LAUNCH_PIN, HIGH);
         liftoffat = millis();
-        rgb.setColor(RED);
+        rgb->setColor(RED);
     
         // Buzzer no longer needed, destruct
         buzzer->turnOff();
@@ -679,14 +711,14 @@ void loop()
             
             #ifdef TOUCHDOWN_DETECTION
                 logfile->close();
-                sdfilemanager.close();
+                sdfilemanager->close();
             #endif
 
             #ifdef SAR_HELPER
               buzzer->turnOn();
             #endif
             
-            rgb.setColor(BLUE);
+            rgb->setColor(BLUE);
             touchdownHappened = true;
           }
         }
@@ -729,15 +761,15 @@ void loop()
       #endif
       
       logfile->close();
-      debugFile.close();
-      sdfilemanager.close();
+      debugFile->close();
+      sdfilemanager->close();
       Serial.flush();
 
       #ifdef SAR_HELPER
         buzzer->turnOff();
       #endif
       
-      rgb.turnOff();
+      rgb->turnOff();
       digitalWrite(LAUNCH_PIN, LOW);
       exit(0);
     }
@@ -789,7 +821,7 @@ uint8_t createNewLogFile(SdFile* logfile)
 {
   static uint16_t fileId = 0;
   logfile->close();
-  return logfile->open(sdfilemanager, ("log_" + String(fileId++) + ".csv").c_str(), O_CREAT | O_WRITE);
+  return logfile->open(sdfilemanager, (String("log_") + String(fileId++) + String(".csv")).c_str(), O_CREAT | O_WRITE);
 }
 
 /**
@@ -814,7 +846,7 @@ void activateStaging(void)
  */
 void abortLaunch(void)
 {
-  rgb.setColor(WHITE);
+  rgb->setColor(WHITE);
   buzzer->turnOff();
 
   #ifdef DEBUG
@@ -823,7 +855,7 @@ void abortLaunch(void)
   #endif
 
   logfile->close();
-  sdfilemanager.close();
+  sdfilemanager->close();
   for(;;) {} // Wait until reset
 }
 
@@ -836,7 +868,7 @@ void abortLaunch(void)
   void writeOutDebugMessage(int i)
   {
     strcpy_P(outBuffer, (char*) pgm_read_word(&messages[i]));
-    debugFile.write(outBuffer);
+    debugFile->write(outBuffer);
     Serial.print(outBuffer);
   }
 
@@ -846,7 +878,7 @@ void abortLaunch(void)
    */
   void writeOutDebugMessage(String message)
   {
-    debugFile.write(message.c_str());
+    debugFile->write(message.c_str());
     Serial.print(message);
   }
 #endif

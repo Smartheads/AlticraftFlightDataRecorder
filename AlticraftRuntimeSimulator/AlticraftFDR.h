@@ -216,7 +216,7 @@
 #define LOG_FILE_HEADER F("timestamp,pressure,altitude,temp,accelX,accelY,accelZ,GyroX,GyroY,GyroZ\n")
 
 #ifdef DEBUG
-char outBuffer[135];
+extern char outBuffer[135];
 
 /* All other messages */
 const char init2[] PROGMEM = { "INITIALIZATION PHASE BEGINNING_\n" };
@@ -285,24 +285,24 @@ const char* const messages[] PROGMEM =
 
 /* Program variables */
 #if defined(LAUNCH_LOG_STAGE) || defined(ONLY_LAUNCH_AND_LOG)
-#include <Buzzer.h>
-SRL::Buzzer* buzzer;
+    #include <Buzzer.h>
+    extern SRL::Buzzer* buzzer;
 #endif
 #ifdef LAUNCH_LOG_STAGE
-#include <Servo.h>
-Servo stageservo;
+    #include <Servo.h>
+    extern Servo stageservo;
 #endif
 
-SRL::I2CDevice bmp(BMP280_ADDRESS);
-SRL::I2CDevice mpu(MPU9250_ADDRESS);
-SRL::rgbled rgb(RED_PIN, GREEN_PIN, BLUE_PIN);
-Sd2Card sdcard;
-SdVolume sdvolume;
-SdFile* logfile;
-SdFile debugFile;
-SdFile sdfilemanager;
+extern SRL::I2CDevice* bmp;
+extern SRL::I2CDevice* mpu;
+extern SRL::rgbled* rgb;
+extern Sd2Card* sdcard;
+extern SdVolume* sdvolume;
+extern SdFile* logfile;
+extern SdFile* debugFile;
+extern SdFile* sdfilemanager;
 
-unsigned long liftoffat = 0; // time of liftoff in miliseconds, for land detection system.
+extern unsigned long liftoffat; // time of liftoff in miliseconds, for land detection system.
 /* END of program variables */
 
 /* Function prototypes */
