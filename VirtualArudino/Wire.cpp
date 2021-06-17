@@ -44,16 +44,13 @@ vard::HardwareWire::HardwareWire(void)
 */
 vard::HardwareWire::~HardwareWire(void)
 {
-	if (readbuffer != NULL)
-	{
-		free(readbuffer);
-	}
+	
 }
 
 /**
 * Begins a Wire connection. Returns 0 if fails.
 *
-* @return
+* @return True if successful.
 */
 bool vard::HardwareWire::begin(void)
 {
@@ -78,10 +75,24 @@ bool vard::HardwareWire::beginTransmission(uint8_t addr)
 	if (this->isconnected)
 	{
 		char buff[64];
-		sprintf_s(buff, 64, "Wire.beginTransmission called. address=%u", addr);
-		vard::logevent(Level::INFO, buff);
-		this->targetaddr = addr;
-		return true;
+
+		// Check if device is in registry
+		if (i2c_device_registry.find(addr) != i2c_device_registry.end())
+		{
+			targetaddr = addr;
+			writebuffer = std::queue<uint8_t>();
+
+			sprintf_s(buff, 64, "Wire.beginTransmission called. addr=%#x", addr);
+			vard::logevent(Level::INFO, buff);
+			
+			return true;
+		}
+		
+		this->targetaddr = 0;
+		sprintf_s(buff, 64, "Wire.beginTransmission called. Device not found. addr=%#x", addr);
+		vard::logevent(Level::ERR, buff);
+		
+		return false;
 	}
 
 	vard::logevent(Level::ERR, "Wire.beginTransmision called. Connection not open.");
@@ -96,15 +107,17 @@ bool vard::HardwareWire::beginTransmission(uint8_t addr)
 */
 bool vard::HardwareWire::write(uint8_t val)
 {
-	if (this->targetaddr)
+	if (targetaddr)
 	{
+		writebuffer.push(val);
+
 		char buff[64];
-		sprintf_s(buff, 64, "Wire.write called. address=%u value=%u", this->targetaddr, val);
+		sprintf_s(buff, 64, "Wire.write called. addr=%#x value=%u", targetaddr, val);
 		vard::logevent(Level::INFO, buff);
 		return true;
 	}
 
-	vard::logevent(Level::ERR, "Wire.write called. Connection not open.");
+	vard::logevent(Level::ERR, "Wire.write called. No target address.");
 	return false;
 }
 
@@ -117,7 +130,7 @@ bool vard::HardwareWire::write(uint8_t val)
 */
 bool vard::HardwareWire::write(uint8_t* buff, uint8_t size)
 {
-	if (this->targetaddr)
+	if (targetaddr)
 	{
 		for (int i = 0; i < size; i++)
 		{
@@ -127,18 +140,38 @@ bool vard::HardwareWire::write(uint8_t* buff, uint8_t size)
 		return true;
 	}
 
-	vard::logevent(Level::ERR, "Wire.write called. Connection not open.");
+	vard::logevent(Level::ERR, "Wire.write called. No target address.");
 	return false;
 }
 
 /**
 * Closes a transmission sequence.
 *
+* @return True if transmission successful.
 */
 bool vard::HardwareWire::endTransmission(void)
 {
+	if (targetaddr)
+	{
+		unsigned int size = writebuffer.size();
+		uint8_t* buff = new uint8_t[size];
+		for (int i = 0; i < size; i++)
+		{
+			buff[i] = writebuffer.front();
+			writebuffer.pop();
+		}
+
+		// Transmit byte buffer to i2c device
+		i2c_device_registry.at(targetaddr)->recieve(buff, size);
+		targetaddr = 0;
+
+		logevent(Level::INFO, "Wire.endTransmission called.");
+		return true;
+	}
+
+	logevent(Level::ERR, "Wire.endTransmission called. No target address.");
 	this->targetaddr = 0;
-	return true;
+	return false;
 }
 
 /**
@@ -146,31 +179,32 @@ bool vard::HardwareWire::endTransmission(void)
 * 
 * @param addr Address to read from.
 * @param size Number of bytes to read into buffer.
+* @return Length of bytes recieved from device.
 */
-bool vard::HardwareWire::requestFrom(uint8_t addr, uint8_t size)
+uint8_t vard::HardwareWire::requestFrom(uint8_t addr, uint8_t size)
 {
 	if (this->isconnected)
 	{
-		char buff[64];
-		sprintf_s(buff, 64, "Wire.requestFrom called. addr=%u size=%u", addr, size);
-
-		if (this->readbuffer != NULL)
+		// Check to see if device is registered
+		if (i2c_device_registry.find(addr) != i2c_device_registry.end())
 		{
-			
+			std::queue<uint8_t>* buffer = i2c_device_registry.at(addr)->transmit(size);
+			readbuffer = std::queue<uint8_t>();
+			std::swap(*buffer, readbuffer);
+			delete buffer;
+
+			char buff[64];
+			sprintf_s(buff, 64, "Wire.requestFrom called. addr=%#x size=%u recieved=%u", addr, size, (int) readbuffer.size());
+			vard::logevent(Level::INFO, buff);
+			return readbuffer.size();
 		}
 
-		this->readbuffer = (uint8_t*)malloc(size);
-		for (int i = 0; i < size; i++)
-		{
-			this->readbuffer[i] = 0;
-		}
-		this->pos = 0;
-		this->buffsize = size;
-		return true;
+		vard::logevent(Level::ERR, "Wire.requestFrom called. No target address.");
+		return 0;
 	}
 
 	vard::logevent(Level::ERR, "Wire.requestFrom called. Connection not open.");
-	return false;
+	return 0;
 }
 
 /**
@@ -180,13 +214,7 @@ bool vard::HardwareWire::requestFrom(uint8_t addr, uint8_t size)
 */
 uint8_t vard::HardwareWire::read(void)
 {
-	if (this->readbuffer != NULL)
-	{
-		if (this->pos >= this->buffsize)
-		{
-			return readbuffer[pos++];
-		}
-
-		free(this->readbuffer);
-	}
+	uint8_t result = readbuffer.front();
+	readbuffer.pop();
+	return result;
 }

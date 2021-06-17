@@ -30,6 +30,7 @@
 #define __WIRE_H__
 
 #include "VirtualArduino.h"
+#include <queue>
 
 namespace vard
 {
@@ -45,15 +46,16 @@ namespace vard
 		bool write(uint8_t*, uint8_t);
 		bool endTransmission(void);
 
-		bool requestFrom(uint8_t, uint8_t);
+		uint8_t requestFrom(uint8_t, uint8_t);
 		uint8_t read(void);
 
 		bool isconnected = false, isavailable = true;
 
 	private:
 		uint8_t targetaddr = 0;
-		unsigned int pos = 0, buffsize = 0;
-		uint8_t* readbuffer = NULL;
+		unsigned int pos = 0;
+		std::queue<uint8_t> readbuffer;
+		std::queue<uint8_t> writebuffer;
 	};
 }
 
