@@ -123,13 +123,13 @@ void setup()
     uint8_t gc = 0;
     mpu->readBytes(MPU9250_GYRO_CONFIG, &gc, 1);
     gc = ((uint8_t)0xE7) & gc; // 11100111 mask
-    gc = gc | ((uint8_t)GYRO_SENSITIVITY);
+    gc = gc | ((uint8_t)GYRO_SENSITIVITY << 3);
     mpu->writeByte(MPU9250_GYRO_CONFIG, gc);
     
     uint8_t ac = 0;
     mpu->readBytes(MPU9250_ACCEL_CONFIG, &ac, 1);
     ac = ((uint8_t)0xE7) & ac; // 11100111 mask
-    ac = ac | ((uint8_t)ACCEL_SENSITIVITY);
+    ac = ac | ((uint8_t)ACCEL_SENSITIVITY << 3);
     mpu->writeByte(MPU9250_ACCEL_CONFIG, ac);
   }
 
@@ -852,6 +852,7 @@ void abortLaunch(void)
   #ifdef DEBUG
     writeOutDebugMessage(35); // Divider
     writeOutDebugMessage(39); // User abort
+    debugFile->close();
   #endif
 
   logfile->close();
@@ -868,7 +869,8 @@ void abortLaunch(void)
   void writeOutDebugMessage(int i)
   {
     strcpy_P(outBuffer, (char*) pgm_read_word(&messages[i]));
-    debugFile->write(outBuffer);
+    if (debugFile != NULL)
+        debugFile->write(outBuffer);
     Serial.print(outBuffer);
   }
 
@@ -878,7 +880,8 @@ void abortLaunch(void)
    */
   void writeOutDebugMessage(String message)
   {
-    debugFile->write(message.c_str());
+      if (debugFile != NULL)
+        debugFile->write(message.c_str());
     Serial.print(message);
   }
 #endif

@@ -47,8 +47,8 @@
 // Measurement preferences
 #define BASE_PRESSURE 100565        // Base pressure to use for altitude calculation
 //#define MEASUREMENT_RATE 1000         // Measurement rate: samples in 1 second (Hz). Comment this line out to disable measurement limiting.
-#define ACCEL_SENSITIVITY 0             // Change the accelerometer sensitivity
-#define GYRO_SENSITIVITY 0              // Change the gyroscope sensitivity
+#define ACCEL_SENSITIVITY 3             // Change the accelerometer sensitivity
+#define GYRO_SENSITIVITY 3              // Change the gyroscope sensitivity
 #define PRESSURE_OVERSAMPLING 3      // Change the pressure oversampling setting
 #define TEMPERATURE_OVERSAMPLING 1   // Change the temperature oversampling setting
 
@@ -146,11 +146,11 @@
 
 #if GYRO_SENSITIVITY == 0
 #define GYRO_SCALE_FACTOR 131.0f
-#elif GYRO_SENSITIVITY = 1
+#elif GYRO_SENSITIVITY == 1
 #define GYRO_SCALE_FACTOR 65.5f
-#elif GYRO_SENSITIVITY = 2
+#elif GYRO_SENSITIVITY == 2
 #define GYRO_SCALE_FACTOR 32.8f
-#elif GYRO_SENSITIVITY = 3
+#elif GYRO_SENSITIVITY == 3
 #define GYRO_SCALE_FACTOR 16.4f
 #endif
 
