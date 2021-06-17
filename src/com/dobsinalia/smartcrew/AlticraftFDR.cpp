@@ -97,13 +97,13 @@ void setup()
     uint8_t gc = 0;
     mpu.readBytes(MPU9250_GYRO_CONFIG, &gc, 1);
     gc = ((uint8_t)0xE7) & gc; // 11100111 mask
-    gc = gc | ((uint8_t)GYRO_SENSITIVITY);
+    gc = gc | ((uint8_t)GYRO_SENSITIVITY << 3);
     mpu.writeByte(MPU9250_GYRO_CONFIG, gc);
     
     uint8_t ac = 0;
     mpu.readBytes(MPU9250_ACCEL_CONFIG, &ac, 1);
     ac = ((uint8_t)0xE7) & ac; // 11100111 mask
-    ac = ac | ((uint8_t)ACCEL_SENSITIVITY);
+    ac = ac | ((uint8_t)ACCEL_SENSITIVITY << 3);
     mpu.writeByte(MPU9250_ACCEL_CONFIG, ac);
   }
 
