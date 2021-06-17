@@ -34,6 +34,7 @@
 #include <string>
 #include <list>
 #include <map>
+#include <queue>
 
 #define INPUT WININPUT
 #include <windows.h>
@@ -118,9 +119,30 @@ namespace vard
 	// Console
 	enum class Level { FATAL, ERR, SEVERE, WARNING, INFO };
 	void logevent(Level, const char*);
+	extern HANDLE winconsole;
 
 	// Pins
 	extern std::map<uint8_t, PinModes> pinregistry;
+
+	class DigitalInputPin
+	{
+	public:
+		DigitalInputPin(uint8_t, OutputLevel (*eventHandler)(void));
+
+		OutputLevel read(void);
+		uint8_t getNumber(void);
+
+	protected:
+		uint8_t pin;
+		OutputLevel(*eventHandler)(void);
+	};
+
+	extern std::map<uint8_t, DigitalInputPin*> digital_input_pin_registry;
+	void attach_digital_input_pin(DigitalInputPin*);
+	void detach_digital_input_pin(DigitalInputPin*);
+
+	// SD
+	extern const char* sdvolume_root;
 
 	// Serial
 	class HardwareSerial
@@ -157,14 +179,20 @@ namespace vard
 	class I2C_Device
 	{
 	public:
-		I2C_Device(uint8_t);
-		~I2C_Device(void);
+		I2C_Device(uint8_t, void (*eventHandler)(uint8_t*, unsigned int));
+
+		uint8_t getAddress(void);
+		void recieve(uint8_t*, unsigned int);
+		std::queue<uint8_t>* transmit(unsigned int);
+		void push(uint8_t);
 
 	protected:
 		uint8_t address;
+		std::queue<uint8_t> writebuffer;
+		void (*eventHandler)(uint8_t*, unsigned int);
 	};
 
-	extern std::list<I2C_Device> i2c_device_registry;
+	extern std::map<uint8_t, I2C_Device*> i2c_device_registry;
 	void attach_I2C_Device(I2C_Device*);
 	void detach_I2C_Device(I2C_Device*);
 }

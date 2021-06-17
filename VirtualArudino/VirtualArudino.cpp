@@ -28,9 +28,13 @@
 #include "VirtualArduino.h"
 
 std::list<vard::Interrupt> intregistry;
-std::map<uint8_t, PinModes> pinregistry;
+std::map<uint8_t, vard::I2C_Device*> vard::i2c_device_registry;
+std::map<uint8_t, PinModes> vard::pinregistry;
+std::map<uint8_t, vard::DigitalInputPin*> vard::digital_input_pin_registry;
 vard::HardwareSerial Serial;
 unsigned long vard::sysbasetime;
+HANDLE vard::winconsole;
+const char* vard::sdvolume_root;
 bool allowinterrupts = true;
 
 /**
@@ -101,25 +105,34 @@ void vard::logevent(Level level, const char* msg)
 	switch (level)
 	{
 	case vard::Level::FATAL:
-		printf("[FATAL][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
+		SetConsoleTextAttribute(winconsole, (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY | BACKGROUND_RED));
+		printf("[FATAL]");
 		break;
 
 	case vard::Level::ERR:
-		printf("[ERROR][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
+		SetConsoleTextAttribute(winconsole, (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY | BACKGROUND_RED));
+		printf("[ERROR]");
 		break;
 
 	case vard::Level::SEVERE:
-		printf("[SEVERE][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
+		SetConsoleTextAttribute(winconsole, (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY | BACKGROUND_RED));
+		printf("[SEVERE]");
 		break;
 
 	case vard::Level::WARNING:
-		printf("[WARNING][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
+		SetConsoleTextAttribute(winconsole, (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY | BACKGROUND_BLUE));
+		printf("[WARNING]");
 		break;
 
 	default:
-		printf("[INFO][%02d:%02d.%02d] %s\n", systime.wHour, systime.wMinute, systime.wMilliseconds, msg);
+		SetConsoleTextAttribute(winconsole, (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY | BACKGROUND_GREEN));
+		printf("[INFO]");
 		break;
 	}
+	SetConsoleTextAttribute(winconsole, (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY));
+	printf("[%02d:%02d.%02d] ", systime.wHour, systime.wMinute, systime.wMilliseconds);
+	SetConsoleTextAttribute(winconsole, (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN));
+	printf("%s\n", msg);
 }
 
 /**
@@ -178,14 +191,14 @@ void delayMicroseconds(unsigned long micros)
 void pinMode(uint8_t pin, PinModes mode)
 {
 	// Register pin
-	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
-	if (it == pinregistry.end())
+	std::map<uint8_t, PinModes>::iterator it = vard::pinregistry.find(pin);
+	if (it == vard::pinregistry.end())
 	{
-		pinregistry.emplace(pin, mode);
+		vard::pinregistry.emplace(pin, mode);
 	}
 	else
 	{
-		pinregistry.at(pin) = mode;
+		vard::pinregistry.at(pin) = mode;
 	}
 
 	switch (mode)
@@ -220,13 +233,13 @@ void digitalWrite(uint8_t pin, OutputLevel level)
 	char buff[64];
 
 	// Check registry for pin
-	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
-	if (it == pinregistry.end())
+	std::map<uint8_t, PinModes>::iterator it = vard::pinregistry.find(pin);
+	if (it == vard::pinregistry.end())
 	{
 		sprintf_s(buff, 64, "digitalWrite called. Pin not registered. pin=%u", pin);
 		vard::logevent(vard::Level::ERR, buff);
 	}
-	else if (pinregistry.at(pin) == PinModes::OUTPUT)
+	else if (vard::pinregistry.at(pin) == PinModes::OUTPUT)
 	{
 		switch (level)
 		{
@@ -262,18 +275,26 @@ OutputLevel digitalRead(uint8_t pin)
 {
 	char buff[64];
 
-	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
-	if (it == pinregistry.end())
+	if (vard::pinregistry.find(pin) == vard::pinregistry.end())
 	{
 		sprintf_s(buff, 64, "digitalRead called. Pin not registered. pin=%u", pin);
 		vard::logevent(vard::Level::ERR, buff);
 	}
-	else if (pinregistry.at(pin) == PinModes::INPUT || pinregistry.at(pin) == PinModes::INPUT_PULLUP)
+	else if (vard::pinregistry.at(pin) == PinModes::INPUT || vard::pinregistry.at(pin) == PinModes::INPUT_PULLUP)
 	{
-		sprintf_s(buff, 64, "digitalRead called. pin=%u", pin);
+		// Check to see if pin is attached (not required)
+		if (vard::digital_input_pin_registry.find(pin) != vard::digital_input_pin_registry.end())
+		{
+			OutputLevel result = vard::digital_input_pin_registry.at(pin)->read();
+			sprintf_s(buff, 64, "digitalRead called. pin=%u val=%u", pin, result);
+			vard::logevent(vard::Level::INFO, buff);
+			return result;
+		}
+
+		sprintf_s(buff, 64, "digitalRead called. No virtual pin connected. pin=%u", pin);
 		vard::logevent(vard::Level::INFO, buff);
 
-		return OutputLevel::LOW;
+		return OutputLevel::LOW; // Always return LOW if no virtual pin connected
 	}
 	else
 	{
@@ -294,13 +315,13 @@ void analogWrite(uint8_t pin, uint16_t value)
 	char buff[64];
 
 	// Check registry for pin
-	std::map<uint8_t, PinModes>::iterator it = pinregistry.find(pin);
-	if (it == pinregistry.end())
+	std::map<uint8_t, PinModes>::iterator it = vard::pinregistry.find(pin);
+	if (it == vard::pinregistry.end())
 	{
 		sprintf_s(buff, 64, "analogWrite called. Pin not registered. pin=%u", pin);
 		vard::logevent(vard::Level::ERR, buff);
 	}
-	else if (pinregistry.at(pin) == PinModes::OUTPUT)
+	else if (vard::pinregistry.at(pin) == PinModes::OUTPUT)
 	{
 		sprintf_s(buff, 64, "analogWrite called. pin=%u value=%u", pin, value);
 		vard::logevent(vard::Level::INFO, buff);
@@ -492,6 +513,57 @@ String String::operator+(const char* b)
 std::string String::std_string(void)
 {
 	return this->str;
+}
+
+/**
+*	Constructor for class input pin. 
+*
+*	@param pin Number of pin.
+*/
+vard::DigitalInputPin::DigitalInputPin(uint8_t pin, OutputLevel (*eventHandler)(void))
+{
+	this->pin = pin;
+	this->eventHandler = eventHandler;
+}
+
+/**
+*	Fetches digital state of virtual pin.
+* 
+*	@return Digital state of virtual pin.
+*/
+OutputLevel vard::DigitalInputPin::read(void)
+{
+	return (*eventHandler)();
+}
+
+/**
+*	Getter for the pin number of input pin. 
+* 
+*	@return Pin number of input pin.
+*/
+uint8_t vard::DigitalInputPin::getNumber(void)
+{
+	return pin;
+}
+
+/**
+*	Attach a virtual digital input pin to the Arduino.
+*
+*	@param pin Digital Input pin to attach.
+*/
+void vard::attach_digital_input_pin(vard::DigitalInputPin* pin)
+{
+	digital_input_pin_registry.insert(std::pair<uint8_t, DigitalInputPin*>(pin->getNumber(), pin));
+}
+
+/**
+*	Detach a virtual digital input piin from the Arduino.
+*
+*	@param pin Digital input pin to detach.
+*/
+void vard::detach_digital_input_pin(vard::DigitalInputPin* pin)
+{
+	digital_input_pin_registry.erase(pin->getNumber());
 }
 
 /*
@@ -833,4 +905,87 @@ void vard::HardwareSerial::setTimeout(unsigned long delay)
 	char buff[64];
 	sprintf_s(buff, 64, "Serial.setTimeout called. value=%lu", delay);
 	vard::logevent(vard::Level::INFO, buff);
+}
+
+/**
+*	Initializes a new I2C device. 
+* 
+*	@param address Address of the I2C device.
+*/
+vard::I2C_Device::I2C_Device(uint8_t address, void (*eventHandler)(uint8_t*, unsigned int))
+{
+	this->address = address;
+	this->eventHandler = eventHandler;
+}
+
+/**
+*	Getter for the i2c device's address. 
+* 
+*	@return Address of the device.
+*/
+uint8_t vard::I2C_Device::getAddress(void)
+{
+	return address;
+}
+
+/**
+*	Takes over data sent by the Arduino to the i2c device.
+*	
+*	@param buffer Array containing sent/recieved bytes.
+*/
+void vard::I2C_Device::recieve(uint8_t* buffer, unsigned int size)
+{
+	// Invoke user defined event handler method
+	(*eventHandler)(buffer, size);
+	delete[] buffer; // Prevent memory leak
+}
+
+/**
+*	Prompts the i2c device to empty its write buffer by
+*	transmitting the data to the Arduino.
+* 
+*	@param size Amount of bytes requested.
+*	@return Array of given size read from the devices writebuffer.
+*/
+std::queue<uint8_t>* vard::I2C_Device::transmit(unsigned int size)
+{
+	std::queue<uint8_t>* buffer = new std::queue<uint8_t>;
+	unsigned int buffersize = writebuffer.size();
+	for (int i = 0; i < size && i < buffersize; i++)
+	{
+		buffer->push(writebuffer.front());
+		writebuffer.pop();
+	}
+	writebuffer = std::queue<uint8_t>(); // clear i2c device writebuffer
+	return buffer;
+}
+
+/**
+*	Adds a byte to the writebuffer of the device. 
+* 
+*	@param byte The byte to add to the buffer.
+*/
+void vard::I2C_Device::push(uint8_t byte)
+{
+	writebuffer.push(byte);
+}
+
+/**
+*	Attach a virtual i2c device to the Arduino. 
+* 
+*	@param device Pointer to the device to attach.
+*/
+void vard::attach_I2C_Device(vard::I2C_Device* device)
+{
+	i2c_device_registry.insert(std::pair<uint8_t, I2C_Device*>(device->getAddress(), device));
+}
+
+/**
+*	Detach a virtual i2c device from the Arduino. 
+* 
+*	@param device Pointer to the device to detach.
+*/
+void vard::detach_I2C_Device(vard::I2C_Device* device)
+{
+	i2c_device_registry.erase(device->getAddress());
 }

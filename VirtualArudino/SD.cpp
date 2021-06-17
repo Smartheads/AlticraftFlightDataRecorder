@@ -175,15 +175,17 @@ uint8_t SdFile::makeDir(SdFile* dir, const char* dirname)
 	{
 		char* path = new char[strlen(dir->path) + strlen(dirname) + 1];
 		strcpy_s(path, strlen(dir->path) + strlen(dirname) + 1, dir->path);
-		strcpy_s(path + strlen(dir->path), strlen(dir->path) + strlen(dirname) + 1, dirname);
+		strcpy_s(path + strlen(dir->path), strlen(dirname) + 1, dirname);
 		path[strlen(dir->path) + strlen(dirname)] = '\0';
 		
 		size_t newsize = strlen(path) + 1;
 		wchar_t* wcstring = new wchar_t[newsize];
 		size_t convertedChars = 0;
 		mbstowcs_s(&convertedChars, wcstring, newsize, path, _TRUNCATE);
+		delete[] path;
 
 		bool result = _wmkdir(wcstring) == 0;
+		delete[] wcstring;
 		char buff[128];
 		if (result)
 		{
@@ -208,13 +210,54 @@ uint8_t SdFile::makeDir(SdFile* dir, const char* dirname)
 *	@param dir Root directory of file.
 *	@param fname Name of file to open.
 *	@param mode Open mode.
+*	@return Returns true (1) if successful.
 */
 uint8_t SdFile::open(SdFile* dir, const char* fname, uint8_t mode)
 {
+	// Check to see if fname is a directory, concatenate path with fname
+	char* path = new char[strlen(dir->path) + strlen(fname) + 1]; // +1 for \0
+	strcpy_s(path, strlen(dir->path) + strlen(fname) + 1, dir->path);
+	strcpy_s(path + strlen(dir->path), strlen(fname) + 1, fname);
+	path[strlen(dir->path) + strlen(fname)] = '\0';
+
 	char buff[64];
-	sprintf_s(buff, "SdFile.open called. fname=%s mode=%u", fname, mode);
-	vard::logevent(vard::Level::INFO, buff);
-	return true;
+	DWORD result = GetFileAttributesA(path);
+	if (result & FILE_ATTRIBUTE_DIRECTORY && result != INVALID_FILE_ATTRIBUTES)
+	{
+		// File is a directory, append \\ to the end of the path
+		char* newpath = new char[strlen(path) + 2];
+		int x = strlen(path);
+		strcpy_s(newpath, strlen(path) + 1, path);
+		newpath[strlen(path)] = '\\';
+		newpath[strlen(path) + 1] = '\0';
+		delete[] path;
+
+		this->path = newpath;
+
+		sprintf_s(buff, "SdFile.open called. File is a dir. fname=%s mode=%u", fname, mode);
+		vard::logevent(vard::Level::INFO, buff);
+		return 1;
+	}
+
+	// Set file path and create file
+	this->path = dir->path;
+	fopen_s(&file, path, "w");
+
+	// Copy fname
+	this->fname = new char[strlen(fname) + 1];
+	strcpy_s((char*) this->fname, strlen(fname) + 1, fname);
+
+	// Check if file successfully created
+	if (file != NULL)
+	{
+		sprintf_s(buff, "SdFile.open called. File opened. fname=%s mode=%u", fname, mode);
+		vard::logevent(vard::Level::INFO, buff);
+		return 1;
+	}
+
+	sprintf_s(buff, "SdFile.open called. Cannot open file. fname=%s mode=%u", fname, mode);
+	vard::logevent(vard::Level::ERR, buff);
+	return 0;
 }
 
 uint8_t SdFile::open(SdFile dir, const char* fname, uint8_t mode)
@@ -228,26 +271,45 @@ uint8_t SdFile::open(SdFile dir, const char* fname, uint8_t mode)
 *	@param c Char to write.
 *	@return True if successfull.
 */
-uint8_t SdFile::write(char c)
+int SdFile::write(char c)
 {
-	char buff[32];
-	sprintf_s(buff, "SdFile.write called. c=%c", c);
-	vard::logevent(vard::Level::INFO, buff);
-	return true;
+	// Create string out of char
+	char* str = new char[2];
+	str[0] = c;
+	str[1] = '\0';
+	int result = write(str);
+	delete[] str;
+	return result;
 }
 
 /**
 *	Writes a c string to the file.
 *
 *	@param str String to write.
-*	@return True if successfull.
+*	@return EOF if fails, otherwise length of bytes written.
 */
-uint8_t SdFile::write(const char* str)
+int SdFile::write(const char* str)
 {
-	char buff[128];
-	sprintf_s(buff, "SdFile.write called: %s", str);
-	vard::logevent(vard::Level::INFO, buff);
-	return true;
+	// Check to see if file is open
+	if (file != NULL)
+	{
+		int result = fputs(str, file);
+		if (result == EOF)
+		{
+			vard::logevent(vard::Level::ERR, "SdFile.write called. Failed to write to file.");
+		}
+		
+		/*char* buff = new char[strlen(str) + 32];
+		sprintf_s(buff, strlen(str) + 32, "SdFile.write called: %s", str);
+		vard::logevent(vard::Level::INFO, buff);
+		delete[] buff;*/
+
+		return result;
+	}
+
+	vard::logevent(vard::Level::ERR, "SdFile.write called. File not open.");
+
+	return EOF;
 }
 
 /**
@@ -256,7 +318,18 @@ uint8_t SdFile::write(const char* str)
 */
 void SdFile::sync(void)
 {
-	vard::logevent(vard::Level::INFO, "SdFile.sync called.");
+	// Check to see if file exists
+	if (file != NULL)
+	{
+		fflush(file);
+		char buff[64];
+		sprintf_s(buff, 64, "SdFile.sync called. fname=%s", fname);
+		vard::logevent(vard::Level::INFO, buff);
+	}
+	else
+	{
+		vard::logevent(vard::Level::WARNING, "SdFile.sync called. File not open.");
+	}
 }
 
 /**
@@ -265,5 +338,19 @@ void SdFile::sync(void)
 */
 void SdFile::close(void)
 {
-	vard::logevent(vard::Level::INFO, "SdFile.close called.");
+	// Check to see if file exists
+	if (file != NULL)
+	{
+		fclose(file);
+		char buff[64];
+		sprintf_s(buff, 64, "SdFile.close called. fname=%s", fname);
+		vard::logevent(vard::Level::INFO, buff);
+
+		file = NULL;
+		delete[] fname;
+	}
+	else
+	{
+		vard::logevent(vard::Level::WARNING, "SdFile.close called. File not open.");
+	}
 }
