@@ -77,7 +77,7 @@ public:
 	unsigned int fatType(void);
 private:
 	friend class SdFile;
-	const char* rootPath = "/";
+	const char* rootPath = vard::sdvolume_root;
 };
 
 class SdFile
@@ -90,14 +90,15 @@ public:
 	uint8_t makeDir(SdFile*, const char*);
 	uint8_t open(SdFile*, const char*, uint8_t);
 	uint8_t open(SdFile, const char*, uint8_t);
-	uint8_t write(char);
-	uint8_t write(const char*);
+	int write(char);
+	int write(const char*);
 	void sync(void);
 	void close(void);
 
-
 private:
 	const char* path = NULL;
+	FILE* file = NULL;
+	const char* fname = NULL;
 };
 
 #endif
