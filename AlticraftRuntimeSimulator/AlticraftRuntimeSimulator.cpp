@@ -33,6 +33,17 @@
 #include <VirtualArduino.h>
 #include <stdio.h>
 
+// Configure virtual i2c devices
+void mpuEventHandler(uint8_t*, unsigned int);
+vard::I2C_Device vmpu(0x68, &mpuEventHandler);
+
+void bmpEventHandler(uint8_t*, unsigned int);
+vard::I2C_Device vbmp(0x76, &bmpEventHandler);
+
+// Configure virtual input pins
+OutputLevel buttonReader(void);
+vard::DigitalInputPin buttonPin(6, &buttonReader);
+
 int wmain(void)
 {
     printf("Alticraft FDR Runtime Simulator - Creates a virtual runtime enviroment for Alticraft Flight Data Recorder Software\n");
@@ -43,6 +54,15 @@ int wmain(void)
     SYSTEMTIME systime;
     GetLocalTime(&systime);
     vard::sysbasetime = systime.wHour * 3600000 + systime.wMinute * 60000 + systime.wSecond * 1000 + systime.wMilliseconds;
+    vard::winconsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    vard::sdvolume_root = "C:\\Users\\Robert Hutter\\Documents\\GitHub\\AlticraftFlightDataRecorder\\AlticraftRuntimeSimulator\\v_sdvolume_root\\";
+
+    // Attach i2c devices
+    vard::attach_I2C_Device(&vmpu);
+    vard::attach_I2C_Device(&vbmp);
+
+    // Attach virtual input pins
+    vard::attach_digital_input_pin(&buttonPin);
 
     // Start the program
     setup();
@@ -51,4 +71,57 @@ int wmain(void)
     {
         loop();
     }
+}
+
+/* Emulate mpu9250 */
+void mpuEventHandler(uint8_t* readbuffer, unsigned int size)
+ {
+    switch (readbuffer[0])
+    {
+    case 0x1b: // GYRO_CONFIG
+        if (size == 1)
+        {
+            vmpu.push(0);
+        }
+        else
+        {
+            char buff[64];
+            sprintf_s(buff, 64, "MPU9250 gyro config register set to %u", readbuffer[1]);
+            vard::logevent(vard::Level::INFO, buff);
+        }
+        break;
+
+    case 0x1c: // ACCEL_CONFIG
+        if (size == 1)
+        {
+            vmpu.push(0);
+        }
+        else
+        {
+            char buff[64];
+            sprintf_s(buff, 64, "MPU9250 accel config register set to %u", readbuffer[1]);
+            vard::logevent(vard::Level::INFO, buff);
+        }
+        break;
+
+    case 0x75:
+        vmpu.push(0x71);
+        break;
+    }
+}
+
+/* emulate bmp280 */
+void bmpEventHandler(uint8_t* readbuffer, unsigned int size)
+{
+    switch (readbuffer[0])
+    {
+    case 0xD0:
+        vbmp.push(0x58);
+        break;
+    }
+}
+
+OutputLevel buttonReader(void)
+{
+    return OutputLevel::HIGH;
 }
