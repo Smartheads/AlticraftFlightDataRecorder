@@ -54,9 +54,7 @@ Sd2Card::~Sd2Card(void)
 */
 uint8_t Sd2Card::init(int speed, int cs)
 {
-	char buff[64];
-	sprintf_s(buff, 64, "SD2Card.init called. speed=%d cs=%d", speed, cs);
-	vard::logevent(vard::Level::INFO, buff);
+	vard::logevent(vard::Level::INFO, "SD2Card.init called. speed=%d cs=%d", speed, cs);
 	return true;
 }
 
@@ -173,29 +171,20 @@ uint8_t SdFile::makeDir(SdFile* dir, const char* dirname)
 {
 	if (dir->path != NULL)
 	{
-		char* path = new char[strlen(dir->path) + strlen(dirname) + 1];
-		strcpy_s(path, strlen(dir->path) + strlen(dirname) + 1, dir->path);
-		strcpy_s(path + strlen(dir->path), strlen(dirname) + 1, dirname);
-		path[strlen(dir->path) + strlen(dirname)] = '\0';
+		char* path = new char[strlen(dir->path) + strlen(dirname) + 1]; // +1 for \0
+		strcpy_s(path, strlen(dir->path) + 1, dir->path);
+		strcpy_s(path + strlen(dir->path), strlen(dirname) + 1, dirname); // \0 included
 		
-		size_t newsize = strlen(path) + 1;
-		wchar_t* wcstring = new wchar_t[newsize];
-		size_t convertedChars = 0;
-		mbstowcs_s(&convertedChars, wcstring, newsize, path, _TRUNCATE);
+		bool result = CreateDirectoryA(path, NULL);
 		delete[] path;
 
-		bool result = _wmkdir(wcstring) == 0;
-		delete[] wcstring;
-		char buff[128];
 		if (result)
 		{
-			sprintf_s(buff, 128, "SdFile.makeDir called. Dir created. dirname=%s", dirname);
-			vard::logevent(vard::Level::INFO, buff);
+			vard::logevent(vard::Level::INFO, "SdFile.makeDir called. Dir created. dirname=%s", dirname);
 		}
 		else
 		{
-			sprintf_s(buff, 128, "SdFile.makeDir called. Failed to create new dir. dirname=%s", dirname);
-			vard::logevent(vard::Level::ERR, buff);
+			vard::logevent(vard::Level::ERR, "SdFile.makeDir called. Failed to create new dir. dirname=%s", dirname);
 		}
 		return result;
 	}
@@ -216,17 +205,14 @@ uint8_t SdFile::open(SdFile* dir, const char* fname, uint8_t mode)
 {
 	// Check to see if fname is a directory, concatenate path with fname
 	char* path = new char[strlen(dir->path) + strlen(fname) + 1]; // +1 for \0
-	strcpy_s(path, strlen(dir->path) + strlen(fname) + 1, dir->path);
-	strcpy_s(path + strlen(dir->path), strlen(fname) + 1, fname);
-	path[strlen(dir->path) + strlen(fname)] = '\0';
+	strcpy_s(path, strlen(dir->path) + 1, dir->path);
+	strcpy_s(path + strlen(dir->path), strlen(fname) + 1, fname); // \0 included
 
-	char buff[64];
 	DWORD result = GetFileAttributesA(path);
 	if (result & FILE_ATTRIBUTE_DIRECTORY && result != INVALID_FILE_ATTRIBUTES)
 	{
 		// File is a directory, append \\ to the end of the path
-		char* newpath = new char[strlen(path) + 2];
-		int x = strlen(path);
+		char* newpath = new char[strlen(path) + 2]; // +1 for \\ and +1 for \0
 		strcpy_s(newpath, strlen(path) + 1, path);
 		newpath[strlen(path)] = '\\';
 		newpath[strlen(path) + 1] = '\0';
@@ -234,8 +220,7 @@ uint8_t SdFile::open(SdFile* dir, const char* fname, uint8_t mode)
 
 		this->path = newpath;
 
-		sprintf_s(buff, "SdFile.open called. File is a dir. fname=%s mode=%u", fname, mode);
-		vard::logevent(vard::Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, "SdFile.open called. File is a dir. fname=%s mode=%u", fname, mode);
 		return 1;
 	}
 
@@ -250,13 +235,11 @@ uint8_t SdFile::open(SdFile* dir, const char* fname, uint8_t mode)
 	// Check if file successfully created
 	if (file != NULL)
 	{
-		sprintf_s(buff, "SdFile.open called. File opened. fname=%s mode=%u", fname, mode);
-		vard::logevent(vard::Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, "SdFile.open called. File opened. fname=%s mode=%u", fname, mode);
 		return 1;
 	}
 
-	sprintf_s(buff, "SdFile.open called. Cannot open file. fname=%s mode=%u", fname, mode);
-	vard::logevent(vard::Level::ERR, buff);
+	vard::logevent(vard::Level::ERR, "SdFile.open called. Cannot open file. fname=%s mode=%u", fname, mode);
 	return 0;
 }
 
@@ -322,9 +305,7 @@ void SdFile::sync(void)
 	if (file != NULL)
 	{
 		fflush(file);
-		char buff[64];
-		sprintf_s(buff, 64, "SdFile.sync called. fname=%s", fname);
-		vard::logevent(vard::Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, "SdFile.sync called. fname=%s", fname);
 	}
 	else
 	{
@@ -342,9 +323,7 @@ void SdFile::close(void)
 	if (file != NULL)
 	{
 		fclose(file);
-		char buff[64];
-		sprintf_s(buff, 64, "SdFile.close called. fname=%s", fname);
-		vard::logevent(vard::Level::INFO, buff);
+		vard::logevent(vard::Level::INFO, "SdFile.close called. fname=%s", fname);
 
 		file = NULL;
 		delete[] fname;

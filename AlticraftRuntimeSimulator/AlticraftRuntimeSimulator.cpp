@@ -85,9 +85,7 @@ void mpuEventHandler(uint8_t* readbuffer, unsigned int size)
         }
         else
         {
-            char buff[64];
-            sprintf_s(buff, 64, "MPU9250 gyro config register set to %u", readbuffer[1]);
-            vard::logevent(vard::Level::INFO, buff);
+            vard::logevent(vard::Level::INFO, "MPU9250 gyro config register set to %u.", readbuffer[1]);
         }
         break;
 
@@ -98,9 +96,7 @@ void mpuEventHandler(uint8_t* readbuffer, unsigned int size)
         }
         else
         {
-            char buff[64];
-            sprintf_s(buff, 64, "MPU9250 accel config register set to %u", readbuffer[1]);
-            vard::logevent(vard::Level::INFO, buff);
+            vard::logevent(vard::Level::INFO, "MPU9250 accel config register set to %u.", readbuffer[1]);
         }
         break;
 
@@ -117,6 +113,10 @@ void bmpEventHandler(uint8_t* readbuffer, unsigned int size)
     {
     case 0xD0:
         vbmp.push(0x58);
+        break;
+    
+    case 0xF4:
+        vard::logevent(vard::Level::INFO, "BMP280 ctrl meas register set to %u.", readbuffer[1]);
         break;
     }
 }

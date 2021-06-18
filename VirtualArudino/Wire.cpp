@@ -74,23 +74,19 @@ bool vard::HardwareWire::beginTransmission(uint8_t addr)
 {
 	if (this->isconnected)
 	{
-		char buff[64];
-
 		// Check if device is in registry
 		if (i2c_device_registry.find(addr) != i2c_device_registry.end())
 		{
 			targetaddr = addr;
 			writebuffer = std::queue<uint8_t>();
 
-			sprintf_s(buff, 64, "Wire.beginTransmission called. addr=%#x", addr);
-			vard::logevent(Level::INFO, buff);
+			vard::logevent(Level::INFO, "Wire.beginTransmission called. addr=%#x", addr);
 			
 			return true;
 		}
 		
 		this->targetaddr = 0;
-		sprintf_s(buff, 64, "Wire.beginTransmission called. Device not found. addr=%#x", addr);
-		vard::logevent(Level::ERR, buff);
+		vard::logevent(Level::ERR, "Wire.beginTransmission called. Device not found. addr=%#x", addr);
 		
 		return false;
 	}
@@ -111,9 +107,7 @@ bool vard::HardwareWire::write(uint8_t val)
 	{
 		writebuffer.push(val);
 
-		char buff[64];
-		sprintf_s(buff, 64, "Wire.write called. addr=%#x value=%u", targetaddr, val);
-		vard::logevent(Level::INFO, buff);
+		vard::logevent(Level::INFO, "Wire.write called. addr=%#x value=%u", targetaddr, val);
 		return true;
 	}
 
@@ -193,9 +187,7 @@ uint8_t vard::HardwareWire::requestFrom(uint8_t addr, uint8_t size)
 			std::swap(*buffer, readbuffer);
 			delete buffer;
 
-			char buff[64];
-			sprintf_s(buff, 64, "Wire.requestFrom called. addr=%#x size=%u recieved=%u", addr, size, (int) readbuffer.size());
-			vard::logevent(Level::INFO, buff);
+			vard::logevent(Level::INFO, "Wire.requestFrom called. addr=%#x size=%u recieved=%u", addr, size, (int)readbuffer.size());
 			return readbuffer.size();
 		}
 

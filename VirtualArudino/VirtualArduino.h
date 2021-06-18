@@ -118,7 +118,7 @@ namespace vard
 
 	// Console
 	enum class Level { FATAL, ERR, SEVERE, WARNING, INFO };
-	void logevent(Level, const char*);
+	void logevent(Level, const char*, ...);
 	extern HANDLE winconsole;
 
 	// Pins
