@@ -90,8 +90,8 @@ public:
 	uint8_t makeDir(SdFile*, const char*);
 	uint8_t open(SdFile*, const char*, uint8_t);
 	uint8_t open(SdFile, const char*, uint8_t);
-	int write(char);
-	int write(const char*);
+	uint8_t write(char);
+	uint8_t write(const char*);
 	void sync(void);
 	void close(void);
 

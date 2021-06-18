@@ -252,34 +252,29 @@ uint8_t SdFile::open(SdFile dir, const char* fname, uint8_t mode)
 *	Writes a single char to the file. 
 * 
 *	@param c Char to write.
-*	@return True if successfull.
+*	@return Returns true (1) if successful and false (0) if fails.
 */
-int SdFile::write(char c)
+uint8_t SdFile::write(char c)
 {
 	// Create string out of char
-	char* str = new char[2];
-	str[0] = c;
-	str[1] = '\0';
-	int result = write(str);
-	delete[] str;
-	return result;
+	return fputc(c, file) != EOF ? 1 : 0;
 }
 
 /**
 *	Writes a c string to the file.
 *
 *	@param str String to write.
-*	@return EOF if fails, otherwise length of bytes written.
+*	@return Returns true (1) if successful and 0 if fails.
 */
-int SdFile::write(const char* str)
+uint8_t SdFile::write(const char* str)
 {
 	// Check to see if file is open
 	if (file != NULL)
 	{
-		int result = fputs(str, file);
-		if (result == EOF)
+		if (fputs(str, file) == EOF)
 		{
 			vard::logevent(vard::Level::ERR, "SdFile.write called. Failed to write to file.");
+			return 0;
 		}
 		
 		/*char* buff = new char[strlen(str) + 32];
@@ -287,12 +282,12 @@ int SdFile::write(const char* str)
 		vard::logevent(vard::Level::INFO, buff);
 		delete[] buff;*/
 
-		return result;
+		return 1;
 	}
 
 	vard::logevent(vard::Level::ERR, "SdFile.write called. File not open.");
 
-	return EOF;
+	return 0;
 }
 
 /**
