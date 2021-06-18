@@ -269,6 +269,7 @@ const char sar_helper[] PROGMEM = { "ALERTING SEARCH AND RESCUE_\n" }; // 46
 const char ldetect3[] PROGMEM = { "PRESS AND HOLD BUTTON TO SHUTDOWN_\n" }; // 47
 const char user_abort[] PROGMEM = { "USER ABORTED LAUNCH_\n" }; // 48
 const char stab_abort[] PROGMEM = { "LAUNCH STABILITY ABORT_\n" }; // 49
+const char hardw_abort[] PROGMEM = { "HARDWARE FAILURE ABORT_\n" }; // 50
 
 const char* const messages[] PROGMEM =
 {
@@ -278,7 +279,7 @@ const char* const messages[] PROGMEM =
   launch1, launch2, startdatalog, init1, trig1, init_dig, shutoff1, shutoff2,
   init_servo, init3, trig2, mpu_init, bmp_init, test_err2, divider, bmp_test_err,
   sd_err_o_ws, mpu_test_err, launch_abort, staging1, staging2, ldetect1, ldetect2,
-  init4, init5, sar_helper, ldetect3, user_abort, stab_abort
+  init4, init5, sar_helper, ldetect3, user_abort, stab_abort, hardw_abort
 };
 /* END of messages */
 #endif
