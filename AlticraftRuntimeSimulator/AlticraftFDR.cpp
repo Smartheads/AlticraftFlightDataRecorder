@@ -498,7 +498,7 @@ void loop()
       {
         // Abort on suspected hardware malfunction of sensors
         #ifdef DEBUG
-        writeOutDebugMessage(48);
+        writeOutDebugMessage(50);
         #endif
         abortLaunch();
       }
@@ -516,7 +516,7 @@ void loop()
       {
         // Abort on suspected hardware malfunction of sd card
         #ifdef DEBUG
-          writeOutDebugMessage(48);
+          writeOutDebugMessage(50);
         #endif
           abortLaunch();
       }
