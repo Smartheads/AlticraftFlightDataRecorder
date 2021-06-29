@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29926.136
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AlticraftRuntimeSimulator", "AlticraftRuntimeSimulator.vcxproj", "{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C5B47510-B075-46BC-A21C-D0A6461EE760} = {C5B47510-B075-46BC-A21C-D0A6461EE760}
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0} = {D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VirtualArudino", "..\..\StandardRoboticsLibrary\C++\Windows\VirtualArudino\VirtualArudino.vcxproj", "{C5B47510-B075-46BC-A21C-D0A6461EE760}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WinSRL", "..\..\StandardRoboticsLibrary\C++\Windows\WinSRL\WinSRL.vcxproj", "{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C5B47510-B075-46BC-A21C-D0A6461EE760} = {C5B47510-B075-46BC-A21C-D0A6461EE760}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Debug|x64.ActiveCfg = Debug|x64
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Debug|x64.Build.0 = Debug|x64
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Debug|x86.ActiveCfg = Debug|Win32
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Debug|x86.Build.0 = Debug|Win32
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Release|x64.ActiveCfg = Release|x64
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Release|x64.Build.0 = Release|x64
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Release|x86.ActiveCfg = Release|Win32
+		{3E9365BD-5827-4FC5-9BE8-C2ABAA211E3E}.Release|x86.Build.0 = Release|Win32
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Debug|x64.ActiveCfg = Debug|x64
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Debug|x64.Build.0 = Debug|x64
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Debug|x86.ActiveCfg = Debug|Win32
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Debug|x86.Build.0 = Debug|Win32
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Release|x64.ActiveCfg = Release|x64
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Release|x64.Build.0 = Release|x64
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Release|x86.ActiveCfg = Release|Win32
+		{C5B47510-B075-46BC-A21C-D0A6461EE760}.Release|x86.Build.0 = Release|Win32
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Debug|x64.ActiveCfg = Debug|x64
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Debug|x64.Build.0 = Debug|x64
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Debug|x86.ActiveCfg = Debug|Win32
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Debug|x86.Build.0 = Debug|Win32
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Release|x64.ActiveCfg = Release|x64
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Release|x64.Build.0 = Release|x64
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Release|x86.ActiveCfg = Release|Win32
+		{D3ABD78E-E5EA-4EC1-8DFF-7285CB4AB6D0}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {73C33B97-0BCA-48D6-8DEF-AD9D6BA583F9}
+	EndGlobalSection
+EndGlobal
