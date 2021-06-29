@@ -32,12 +32,27 @@
 *.app
 
 # Visual studio generated files
-AlticraftLogPreprocessor/.vs/*
-*.sln
+*.filters
+*.user
+*.obj
+*.idb
+*.recipe
+*.pdb
+*.sarif
+*.tlog
+*.tlog/
+*.vs/
 *.aps
-*.vcxproj*
-AlticraftLogPreprocessor/AlticraftLogPreprocessor/x64/*
-AlticraftLogPreprocessor/AlticraftLogPreprocessor/Release/*
-AlticraftLogPreprocessor/AlticraftLogPreprocessor/resource.h
-AlticraftLogPreprocessor/x64/*
-AlticraftLogPreprocessor/Release/*
+*.iobj
+*.ipdb
+*.ilk
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/x64/Debug/
+AlticraftRuntimeSimulator/x64/Debug/
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/Release/AlticraftLogPreprocessor.log
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/Release/AlticraftLogPreprocessor.res
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/x64/Release/AlticraftLogPreprocessor.res
+AlticraftLogPreprocessor/AlticraftLogPreprocessor/x64/Release/AlticraftLogPreprocessor.log
+!*/Release/AlticraftLogPreprocessor.exe
+
+# Emulated SD card
+AlticraftRuntimeSimulator/v_sdvolume_root/
