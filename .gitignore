@@ -52,6 +52,7 @@ AlticraftLogPreprocessor/AlticraftLogPreprocessor/Release/AlticraftLogPreprocess
 AlticraftLogPreprocessor/AlticraftLogPreprocessor/Release/AlticraftLogPreprocessor.res
 AlticraftLogPreprocessor/AlticraftLogPreprocessor/x64/Release/AlticraftLogPreprocessor.res
 AlticraftLogPreprocessor/AlticraftLogPreprocessor/x64/Release/AlticraftLogPreprocessor.log
+!*/Release/AlticraftLogPreprocessor.exe
 
 # Emulated SD card
 AlticraftRuntimeSimulator/v_sdvolume_root/
