@@ -103,6 +103,28 @@ void mpuEventHandler(uint8_t* readbuffer, unsigned int size)
     case 0x75:
         vmpu.push(0x71);
         break;
+
+    case 0x3B: // data read
+        /*
+            0x3B - 0x40 accel data
+            0x41 - 0x42 temp data
+            0x43 - 0x48 gyro data
+        */
+        vmpu.push(0); // accel x high
+        vmpu.push(0); // accel x low
+        vmpu.push(8); // accel y high
+        vmpu.push(0); // accel y low
+        vmpu.push(0); // accel z high
+        vmpu.push(0); // accel z low
+        vmpu.push(0); // temp high
+        vmpu.push(0); // temp low
+        vmpu.push(0); // gyro x high
+        vmpu.push(0); // gyro x low
+        vmpu.push(0); // gyro y high
+        vmpu.push(0); // gyro y low
+        vmpu.push(0); // gyro z high
+        vmpu.push(0); // gyro z low
+        break;
     }
 }
 
@@ -123,5 +145,12 @@ void bmpEventHandler(uint8_t* readbuffer, unsigned int size)
 
 OutputLevel buttonReader(void)
 {
+    static unsigned long start_time = millis();
+
+    if (millis() > start_time + 5000)
+    {
+        return OutputLevel::LOW;
+    }
+
     return OutputLevel::HIGH;
 }
